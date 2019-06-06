@@ -29,5 +29,38 @@ class CustomFunctions{
         return $result;
     }
 
+    //создание элемента списка
+    protected function createNewListElement($fields){
+        $res = [
+            'result' => false,
+            'error' => false,
+        ];
+        $elem = new CIBlockElement;
+        $new_id = $elem->Add($fields);
+        if($new_id) $res['result'] = $new_id;
+        else $res['error'] = $elem->LAST_ERROR;
+        return $res;
+    }
+
+    //получение значения справочников
+    protected function getReferenceBook($filter){
+        //array('ENTITY_ID' => 'CONTACT_TYPE', 'STATUS_ID' => $ID)
+
+        $db_list = CCrmStatus::GetList([], $filter);
+        $result = [];
+        if ($ar_result = $db_list->GetNext()) $result = $ar_result;
+        return $result;
+    }
+
+    //получаем значения select для вставки в коммент - передаем значение
+    protected function convertSelectValIdToValue($value_number){
+        $sel_val = CUserFieldEnum::GetList(array(), array(
+            "ID" => $value_number,
+        ));
+        $arGender = $sel_val->GetNext();
+        return $arGender['VALUE'];
+    }
+
+
 
 }

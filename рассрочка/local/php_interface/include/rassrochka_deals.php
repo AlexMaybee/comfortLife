@@ -1,19 +1,26 @@
 <?
 
-//AddEventHandler("crm", "OnAfterCrmDealAdd", Array("RassrochkaDealEvents", "testLogAfter"));//отлавливаем кастом сессию с id расписания
+//отлавливаем кастом сессию с id расписания
+//AddEventHandler("crm", "OnAfterCrmDealAdd", Array("RassrochkaDealEvents", "RassrochkaElemsAddAfterDealCreate"));
+//AddEventHandler("crm", "OnBeforeCrmDealAdd", Array("RassrochkaDealEvents", "RassrochkaElemsAddBeforeDealCreate"));
+
+//логирование перед соданием элемента списка
+//AddEventHandler("iblock", "OnBeforeIBlockElementAdd", Array("RassrochkaDealEvents", "beforeIBlockElementAddFunction"));
+
 
 //Событие при обновленнии сделки - переход на конкретные стадии 2-х направлений "договора" Киев и Ирпень
-AddEventHandler("crm", "OnBeforeCrmDealUpdate", Array("RassrochkaDealEvents", "createRassrochkaListElementsForDeal"));
+//AddEventHandler("crm", "OnBeforeCrmDealUpdate", Array("RassrochkaDealEvents", "createRassrochkaListElementsForDeal"));
 
 class RassrochkaDealEvents extends CustomFunctions{
 
     const IBLOCK_31 = 31; //ID списка элементов с рассрочками
+    const ALLOVED_ON_STAGES = ['PREPARATION','C1:PREPARATION']; //Стадии, на которіх срабатівают собітия создания єл. рассрочки
 
     public function createRassrochkaListElementsForDeal(&$arFields){
         $dealData = 0;
         $errors = [];
 
-        if(isset($arFields['STAGE_ID']) && in_array($arFields['STAGE_ID'], ['PREPARATION','C1:PREPARATION']) && $arFields['ID'] > 0){ //стадию заменить на EXECUTING и C1:EXECUTING
+        if(isset($arFields['STAGE_ID']) && in_array($arFields['STAGE_ID'], self::ALLOVED_ON_STAGES) && $arFields['ID'] > 0){ //стадию заменить на EXECUTING и C1:EXECUTING
 
             //сначала проверяем, чтобы элементы рассрочки уже не были созданы!
             $checkElemFilter = ['IBLOCK_ID' => self::IBLOCK_31, 'PROPERTY_108' => $arFields['ID']];
@@ -77,7 +84,7 @@ class RassrochkaDealEvents extends CustomFunctions{
 
 
                         //5.  Первій взнос - НЕ НУЖНО??? - Уточнить!!!
-                       /* if(
+                        if(
                             (
                                 (isset($arFields['UF_CRM_1550227609']) && !$arFields['UF_CRM_1550227609'] && !$dealData['UF_CRM_1550227609']) || (!isset($arFields['UF_CRM_1550227609']) && !$dealData['UF_CRM_1550227609'])
                             )
@@ -85,7 +92,7 @@ class RassrochkaDealEvents extends CustomFunctions{
                             (
                                 (isset($arFields['UF_CRM_1550227631']) && !$arFields['UF_CRM_1550227631'] && !$dealData['UF_CRM_1550227631']) || (!isset($arFields['UF_CRM_1550227631']) && !$dealData['UF_CRM_1550227631'])
                             )
-                        ) $errors[] = 'Не вказано суму першого внеску у ГРН. або у $';*/
+                        ) $errors[] = 'Не вказано суму першого внеску у ГРН. або у $';
 
                         //6. Сумма рассрочки
                         if(
@@ -107,20 +114,72 @@ class RassrochkaDealEvents extends CustomFunctions{
                             $errors[] = 'Оберіть кількість місяців (платежів) рострочки!';
 
 
+                        //Если нет ошибок, переходим к созданию элементов списка = кол-ву платежей
                         if(!$errors){
-                            self::logData('SuccessDealUpdate.log',[$arFields]);
+                           // self::logData('SuccessDealUpdate.log',[$arFields]);
+
+                            $newDataMassive = [
+                                'DEAL_ID' => $arFields['ID'],
+                                'CONTACTS' => [],
+                                'CONTRACT' => '',
+                                'RASSROCHKA_SUM_UAH' => $dealData['UF_CRM_1550227712'],
+                                'RASSROCHKA_SUM_USD' => $dealData['UF_CRM_1550227726'],
+                                'START_DATE' => $dealData['UF_CRM_1550227879'],
+                                'ZHK_NAME' => '',
+                                'PAYMENTS_NUM' => '',
+                            ];
+                            $contract_name = '';
+                            if(isset($arFields['UF_CRM_1550240174']) && $arFields['UF_CRM_1550240174'] && !$dealData['UF_CRM_1550240174']) $newDataMassive['CONTRACT'] = $arFields['UF_CRM_1550240174'];
+                            if($dealData['UF_CRM_1550240174']) $newDataMassive['CONTRACT'] = $dealData['UF_CRM_1550240174'];
+
+                            if($dealData['CONTACT_ID'] && $dealData['CONTACT_ID'] != $arFields['CONTACT_ID']) $newDataMassive['CONTACTS'][] = 'C_'.$dealData['CONTACT_ID'];
+                            if(isset($arFields['CONTACT_ID']) && $arFields['CONTACT_ID']) $newDataMassive['CONTACTS'][] = 'C_'.$arFields['CONTACT_ID'];
+                            if(isset($arFields['CONTACT_IDS']) && $arFields['CONTACT_IDS'])
+                                foreach ($arFields['CONTACT_IDS'] as $contact) {
+                                    if(in_array($contact,[$arFields['CONTACT_ID'],$dealData['CONTACT_ID']])) continue;
+                                    else $newDataMassive['CONTACTS'][] = 'C_'.$contact;
+                                }
+
+                            if(isset($arFields['COMPANY_ID']) && $arFields['COMPANY_ID']) $newDataMassive['CONTACTS'][] = 'CO_'.$arFields['COMPANY_ID'];
+                            if(!isset($arFields['COMPANY_ID']) && $dealData['COMPANY_ID']) $newDataMassive['CONTACTS'][] = 'CO_'.$dealData['COMPANY_ID'];
+
+                            //сумма рассрочки, UAH
+                          //  if($dealData['UF_CRM_1550227712']) $newDataMassive['RASSROCHKA_SUM_UAH'] = $dealData['UF_CRM_1550227712'];
+                            if(isset($arFields['UF_CRM_1550227712']) && $arFields['UF_CRM_1550227712']) $newDataMassive['RASSROCHKA_SUM_UAH'] = $arFields['UF_CRM_1550227712'];
+
+                            //сумма рассрочки, USD
+                          //  if($dealData['UF_CRM_1550227726']) $newDataMassive['RASSROCHKA_SUM_USD'] = $dealData['UF_CRM_1550227726'];
+                            if(isset($arFields['UF_CRM_1550227726']) && $arFields['UF_CRM_1550227726']) $newDataMassive['RASSROCHKA_SUM_UAH'] = $arFields['UF_CRM_1550227726'];
+
+                            //дата старта
+                            if(isset($arFields['UF_CRM_1550227879']) && $arFields['UF_CRM_1550227879']) $newDataMassive['START_DATE'] = $arFields['UF_CRM_1550227879'];
+
+                            //название ЖК, перевод из числа и формат из HTML в текст
+                            $zhkName = $dealData['TYPE_ID'];
+                            if(isset($arFields['TYPE_ID']) && $arFields['TYPE_ID']) $zhkName = $arFields['TYPE_ID'];
+                            if($zhkName){
+                                $refFilter = ['ENTITY_ID' => 'DEAL_TYPE', 'STATUS_ID' => $zhkName];
+                                $refResult = self::getReferenceBook($refFilter);
+                                if($refResult) $newDataMassive['ZHK_NAME'] = HTMLToTxt($refResult['NAME']); //перевод из HTML в текст
+                            }
+
+                            //кол-во платежей (месяцев), перевод из числа
+                            $paymentsNumId = '';
+                            if($dealData['UF_CRM_1550227956']) $paymentsNumId = $dealData['UF_CRM_1550227956'];
+                            if(isset($arFields['UF_CRM_1550227956']) && $arFields['UF_CRM_1550227956']) $paymentsNumId = $arFields['UF_CRM_1550227956'];
+                            if($paymentsNumId) $newDataMassive['PAYMENTS_NUM'] = self::convertSelectValIdToValue($paymentsNumId);
+
+
+                            //запуск создания єл-в расрочки !!!только если кол-во платежей > 0
+                            if($newDataMassive['PAYMENTS_NUM'] > 0) $rassrochkaElemsCreateResult = self::createRassrochkaElements($newDataMassive);
                         }
                     }
 
-
-
                 }
-
 
             }
 
-
-        //    self::logData('BeforeDealUpdate.log',[$arFields,$dealData,$errors]);
+            self::logData('BeforeDealUpdate.log',[$arFields,$dealData,$errors,$newDataMassive,$rassrochkaElemsCreateResult]);
         }
 
         //чисто для теста
@@ -141,7 +200,98 @@ class RassrochkaDealEvents extends CustomFunctions{
 
 
 
-    public function testLogAfter(&$arFields){
+    public function RassrochkaElemsAddAfterDealCreate(&$arFields){
         self::logData('LogAfterDealCreate.log',$arFields);
     }
+
+    public function RassrochkaElemsAddBeforeDealCreate(&$arFields){
+        $errors = [];
+        if(in_array($arFields['STAGE_ID'],self::ALLOVED_ON_STAGES)){ //стадию заменить на EXECUTING и C1:EXECUTING
+            if($arFields['UF_CRM_1550841222'] == 90){
+                if(empty($arFields['UF_CRM_1550227609'])) $errors[] = 'НЕ УКАЗАН ПЕРВЫЙ ВЗНОС!';
+                if(empty($arFields['UF_CRM_1550227814'])) $errors[] = 'НЕ УКАЗАНО КОЛ-ВО ОПЛАЧЕННЫХ КЛИЕНТОМ МЕТРОВ !';
+            }
+
+        }
+
+
+        self::logData('LogBeforeDealCreate.log',$arFields);
+
+
+        if($errors){
+            $err = '';
+            foreach ($errors as $error){
+                $err .= $error."\n";
+            }
+            $arFields['RESULT_MESSAGE'] = $err;
+            return false;
+        }
+        else return true;
+
+    }
+
+    public function beforeIBlockElementAddFunction(&$arFields){
+        self::logData('ListElemBeforeCreate.log',$arFields);
+    }
+
+    //функция создания элементов списка "рассрочка" - Нужно ее візівать для создания єлементов списка = 31
+    private function createRassrochkaElements($massive){
+        $result = false;
+
+        if($massive){
+
+
+
+            if($massive['PAYMENTS_NUM'] > 0){
+                $remainder = false;
+                $biggerPayment = false;
+                $equalPayment = false;
+
+                //рассчет платежей
+                $wholePaymentUAH = explode('|',$massive['RASSROCHKA_SUM_UAH']);
+
+                //Проверяем, делится ли с отстатком
+                $remainder = $wholePaymentUAH[0] % $massive['PAYMENTS_NUM'];
+                if($remainder > 0){
+                    $biggerPayment = ($wholePaymentUAH[0] - $remainder) / $massive['PAYMENTS_NUM'] + $remainder;
+                    $equalPayment = ($wholePaymentUAH[0] - $remainder) / $massive['PAYMENTS_NUM'];
+                }
+                //или все делим на равніе части
+                else $equalPayment = $wholePaymentUAH[0]/$massive['PAYMENTS_NUM'];
+
+
+                for($i = 1; $i <= $massive['PAYMENTS_NUM']; $i++){
+//                    if($remainder > 0 && $i == 1){
+//                        $sumUAH = $biggerPayment;
+//                    }
+//                    else $sumUAH = $equalPayment;
+
+                    $newListElemFields = [
+                        'NAME' => $massive['CONTRACT'].', платіж # '.$i,
+                        "ACTIVE"         => "Y", // активен
+                        "IBLOCK_ID"      => 31,
+                        "PROPERTY_VALUES"=> [
+                            '107' => $massive['CONTACTS'],
+                            '108' => $massive['DEAL_ID'],
+                            '109' => $massive['ZHK_NAME'],
+                            '110' => 80, //Статус 80 - "Не оплачено" // 79 - Оплачено
+                            '111' => ($remainder > 0 && $i == 1) ? $biggerPayment.'|'.$wholePaymentUAH[1] : $equalPayment.'|'.$wholePaymentUAH[1],//'5000|UAH',
+                            '113' => date('t.m.Y', strtotime($massive['START_DATE'].'+'.($i-1).' months')),//последний день выбранного месяца + платежи на n-месяцев
+                        ],
+                    ];
+
+                   // $result[] = $newListElemFields;
+                    $result[] = self::createNewListElement($newListElemFields);
+                }
+
+
+
+            }
+
+
+        }
+        return $result;
+    }
+
+
 }
