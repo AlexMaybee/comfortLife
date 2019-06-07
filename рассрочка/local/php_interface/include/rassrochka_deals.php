@@ -7,6 +7,9 @@
 //логирование перед соданием элемента списка
 //AddEventHandler("iblock", "OnBeforeIBlockElementAdd", Array("RassrochkaDealEvents", "beforeIBlockElementAddFunction"));
 
+//изменение элемента списка
+//AddEventHandler("iblock", "OnBeforeIBlockElementUpdate", Array("RassrochkaDealEvents", "beforeIBlockElementUpdateFunction"));
+
 
 //Событие при обновленнии сделки - переход на конкретные стадии 2-х направлений "договора" Киев и Ирпень
 //AddEventHandler("crm", "OnBeforeCrmDealUpdate", Array("RassrochkaDealEvents", "createRassrochkaListElementsForDeal"));
@@ -14,13 +17,13 @@
 class RassrochkaDealEvents extends CustomFunctions{
 
     const IBLOCK_31 = 31; //ID списка элементов с рассрочками
-    const ALLOVED_ON_STAGES = ['PREPARATION','C1:PREPARATION']; //Стадии, на которіх срабатівают собітия создания єл. рассрочки
+    const ALLOVED_ON_STAGES = ['PREPARATION','C1:PREPARATION']; //Стадии, на которіх срабатівают собітия создания єл. рассрочки, !!!заменить на EXECUTING и C1:EXECUTING!!!
 
     public function createRassrochkaListElementsForDeal(&$arFields){
         $dealData = 0;
         $errors = [];
 
-        if(isset($arFields['STAGE_ID']) && in_array($arFields['STAGE_ID'], self::ALLOVED_ON_STAGES) && $arFields['ID'] > 0){ //стадию заменить на EXECUTING и C1:EXECUTING
+        if(isset($arFields['STAGE_ID']) && in_array($arFields['STAGE_ID'], self::ALLOVED_ON_STAGES) && $arFields['ID'] > 0){
 
             //сначала проверяем, чтобы элементы рассрочки уже не были созданы!
             $checkElemFilter = ['IBLOCK_ID' => self::IBLOCK_31, 'PROPERTY_108' => $arFields['ID']];
@@ -41,7 +44,6 @@ class RassrochkaDealEvents extends CustomFunctions{
 
                 if(!$dealData) $errors[] = 'Не існує угод з ID = '.$arFields['ID'];
                 else{
-
 
                     if((isset($arFields['UF_CRM_1550841222']) && $arFields['UF_CRM_1550841222'] == 90) || $dealData['UF_CRM_1550841222'] == 90){
 
@@ -234,13 +236,120 @@ class RassrochkaDealEvents extends CustomFunctions{
         self::logData('ListElemBeforeCreate.log',$arFields);
     }
 
+    public function beforeIBlockElementUpdateFunction(&$arFields){
+        if($arFields['IBLOCK_ID'] == self::IBLOCK_31){
+            //1. Получаем массив элементов, кот. прикреплены к этой же сделке
+            if($arFields['ID']> 0){
+                //получаем старые данные элемента для сравнения
+                $oldElemDataFilter = ['ID' => $arFields['ID'],'IBLOCK_ID' => self::IBLOCK_31];
+                $oldElemDataSelect = ["ID","IBLOCK_ID","NAME","PROPERTY_*"];
+                $oldElemDataResult = self::getListElementsAdnPropsByFilter($oldElemDataFilter,$oldElemDataSelect);
+                if($oldElemDataResult){
+
+                    //запрашиваем все данные всех элементов, которые привязаны к той же сделке
+                    $siblingElementsFilter = [
+                        'IBLOCK_ID' => self::IBLOCK_31,
+                        'PROPERTY_108' => $oldElemDataResult[0]['PROPERTIES']['UGODA']['VALUE'], ///PROPERY_108 - ID сделки
+                        '!ID' => $oldElemDataResult[0]['FIELDS']['ID']
+                    ];
+                    $siblingElementsSelect = ['ID','NAME','IBLOCK_ID','PROPERTY_*',"TIMESTAMP_X"];
+                    $siblingElementsResult = self::getListElementsAdnPropsByFilter($siblingElementsFilter,$siblingElementsSelect);
+
+                    if($siblingElementsResult){
+                        //массив для обновления полей родственных элементов списка
+                        global $USER;
+
+                        $updElementsFields = [
+//                            '107' => $oldElemDataResult[0]['PROPERTIES']['KLIYENT']['VALUE'],
+//                            '108' => $oldElemDataResult[0]['PROPERTIES']['UGODA']['VALUE'],
+//                            '109' => $oldElemDataResult[0]['PROPERTIES']['ZHYTLOVYY_KOMPLEKS']['VALUE'],
+                        ];
+
+                    //теперь сравниваем измененные поля в элементе и добавляем в $updElementsFields
+
+                        //привязка к контактам/компаниям
+                        if($arFields['PROPERTY_VALUES']['107'] != $oldElemDataResult[0]['PROPERTIES']['KLIYENT']['VALUE']) $updElementsFields['107'] = $arFields['PROPERTY_VALUES']['107'];
+
+                        //привязка к сделке
+                        if($arFields['PROPERTY_VALUES']['108']){
+                            $deal_id = '';
+                            foreach ($arFields['PROPERTY_VALUES']['108'] as $value) $deal_id = $value['VALUE'];
+                            if($deal_id && ($deal_id != $oldElemDataResult[0]['PROPERTIES']['UGODA']['VALUE'])) $updElementsFields['108'] = $deal_id;
+                        }
+
+                        //Название ЖК
+                        if($arFields['PROPERTY_VALUES']['109']){
+                            $zhkName = '';
+                            foreach ($arFields['PROPERTY_VALUES']['109'] as $value) $zhkName = $value['VALUE'];
+                            if($zhkName && ($zhkName != $oldElemDataResult[0]['PROPERTIES']['UGODA']['VALUE'])) $updElementsFields['109'] = $zhkName;
+                        }
+
+                        //обновляем все элементы
+                        $allElems = [];
+                        $updateOtherElems = ['NONONO!!!'];
+                        foreach ($siblingElementsResult as $oneElem){
+                          //  $updElementsFields['NAME'] = $oneElem['FIELDS']['NAME'];
+                          //  $updElementsFields['110'] = $oneElem['PROPERTIES']['STATUS']['VALUE'];
+                            $updElementsFields['111'] = $oneElem['PROPERTIES']['SUMA_PLATEJU_UAH']['VALUE'];
+                            $updElementsFields['113'] = $oneElem['PROPERTIES']['DATA_PLATEJU']['VALUE'];
+
+                            $updatedAgo = self::calculateDiffInTime($oneElem['FIELDS']['TIMESTAMP_X'],date('d.m.Y H:i:s'));
+                            $updElementsFields['AGO'] = $updatedAgo;
+
+                            $allElems[] = $updElementsFields;
+
+//                            if($updatedAgo)
+//                                $updateOtherElems[] = self::updateListElementsAllFields($oneElem['FIELDS']['ID'],$updElementsFields);
+                                $updateOtherElems[] = self::updatePropertiesInListElement1($oneElem['FIELDS']['ID'],self::IBLOCK_31,$updElementsFields);
+
+                        }
+
+                    }
+
+
+
+                    //сравнение статуса
+//                    if($arFields['PROPERTY_VALUES']['110']){
+//                        //если происходит смена статуса на "Оплачено" (79), (80 - "Не оплачено")
+//                        if ($arFields['PROPERTY_VALUES']['110'] == 79 && $arFields['PROPERTY_VALUES']['110'] != $oldElemDataResult[0]['PROPERTY_110_ENUM_ID']){
+//                            //сравниваем оплаченные суммы с тем, что было сохранено ДО изменения
+//                            //если сумма НЕ изменилась, то ничего не делаем
+//
+//                            //если сумма изменилась, то получаем все элементы рассрочки с привязкой к
+//                            if($arFields['PROPERTY_VALUES']['111']){
+//                                $newPaymentSum = '';
+//                                foreach ($arFields['PROPERTY_VALUES']['111'] as $value) $newPaymentSum = $value['VALUE'];
+//
+//                                //если поле с суммой изменилось (имеет такой вид: "333334|UAH"), осуществляется пересчет
+//                                if($newPaymentSum && ($newPaymentSum != $oldElemDataResult[0]['PROPERTY_111_VALUE'])){
+//                                    $unPayedElementsFilter = [
+//                                        'IBLOCK_ID' => self::IBLOCK_31,
+//                                        'PROPERTY_108' => $oldElemDataResult[0]['PROPERTY_108_VALUE'],
+//                                        'PROPERTY_110' => 80,
+//                                        ];
+//                                    $unPayedElementsSelect = ['ID','NAME','PROPERTY_111','PROPERTY_111'];
+//
+//                                }
+//
+//
+//                            }
+//                        }
+//                    }
+
+                }
+            }
+            //if($arFields['PROPERTY_VALUES']['111'])
+
+            self::logData('2ListElemBeforeUpdate.log',[$arFields,$oldElemDataResult,$siblingElementsResult,$allElems,$updateOtherElems/*,$newPaymentSum*/]);
+        }
+
+    }
+
     //функция создания элементов списка "рассрочка" - Нужно ее візівать для создания єлементов списка = 31
     private function createRassrochkaElements($massive){
         $result = false;
 
         if($massive){
-
-
 
             if($massive['PAYMENTS_NUM'] > 0){
                 $remainder = false;
@@ -284,10 +393,7 @@ class RassrochkaDealEvents extends CustomFunctions{
                     $result[] = self::createNewListElement($newListElemFields);
                 }
 
-
-
             }
-
 
         }
         return $result;

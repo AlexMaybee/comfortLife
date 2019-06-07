@@ -19,12 +19,26 @@ class CustomFunctions{
         return false;
     }
 
-    //получение списка элементов по фильтру
+    //получение списка элементов по фильтру - простой
     protected function getListElementsByFilter($arFilter,$arSelect){
         $result = array();
         $resultList = CIBlockElement::GetList(array(), $arFilter, false, false, $arSelect);
         while ($list = $resultList->Fetch()) {
             $result[] = $list;
+        }
+        return $result;
+    }
+
+    //получение списка элементов по фильтру - свойства - каждое отдельным массивом
+    protected function getListElementsAdnPropsByFilter($arFilter,$arSelect){
+        //пример получения всех свойств (не работает в обычном виде) -  ["ID", "IBLOCK_ID", "NAME","PROPERTY_*"]
+        //без запроса в выборке "IBLOCK_ID" не будет работать!!!
+        $resultList = CIBlockElement::GetList(array(), $arFilter, false, false,$arSelect);
+        while($ob = $resultList->GetNextElement()){
+            $result[] = [
+                'FIELDS' => $ob->GetFields(),
+                'PROPERTIES' => $ob->GetProperties(),
+            ];
         }
         return $result;
     }
@@ -61,6 +75,33 @@ class CustomFunctions{
         return $arGender['VALUE'];
     }
 
+    //обновляет ВСЕ ПОЛЯ (Если не указать свойство, то его ранее сохр. знач. ЗАТРЕТ!)
+    protected function updateListElementsAllFields($elemId,$newFields){
+        $el = new CIBlockElement;
+        $res = $el->Update($elemId, $newFields);
+        return $res;
+    }
 
+    //Перезапись выбранных полей элемента списка (А не всех!!!)
+    protected function updatePropertiesInListElement1($elemID,$iBlockId,$property_values){
+        $elem = new CIBlockElement;
+        $is_updated = $elem->SetPropertyValuesEx($elemID,$iBlockId,$property_values);
+        return $is_updated;
+    }
+
+    protected function calculateDiffInTime($dateStart,$dateEnd){
+        $result = 0;
+        $dateStart = new DateTime($dateStart);
+        $dateEnd = new DateTime($dateEnd);
+        $interval = $dateStart->diff($dateEnd);
+      //  echo $interval->format('%R%Y лет, %R%M месяцев, %R%D дней, %R%H часов, %R%I минут, %S секунд');
+//        if($interval->format('%S') > 0 ) $result = intval($interval->format('%S'));
+        if($interval->format('%I') > 0 ) $result = intval($interval->format('%I'));
+//        if($interval->format('%H') > 0 ) $result = intval($interval->format('%H'));
+//        if($interval->format('%D') > 0 ) $result = intval($interval->format('%D'));
+//        if($interval->format('%M') > 0 ) $result = intval($interval->format('%M'));
+//        if($interval->format('%Y') > 0 ) $result = intval($interval->format('%Y'));
+        return $result;
+    }
 
 }
