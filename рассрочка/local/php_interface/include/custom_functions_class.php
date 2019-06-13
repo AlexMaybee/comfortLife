@@ -89,19 +89,19 @@ class CustomFunctions{
         return $is_updated;
     }
 
-    protected function calculateDiffInTime($dateStart,$dateEnd){
-        $result = 0;
-        $dateStart = new DateTime($dateStart);
-        $dateEnd = new DateTime($dateEnd);
-        $interval = $dateStart->diff($dateEnd);
-      //  echo $interval->format('%R%Y лет, %R%M месяцев, %R%D дней, %R%H часов, %R%I минут, %S секунд');
-//        if($interval->format('%S') > 0 ) $result = intval($interval->format('%S'));
-        if($interval->format('%I') > 0 ) $result = intval($interval->format('%I'));
-//        if($interval->format('%H') > 0 ) $result = intval($interval->format('%H'));
-//        if($interval->format('%D') > 0 ) $result = intval($interval->format('%D'));
-//        if($interval->format('%M') > 0 ) $result = intval($interval->format('%M'));
-//        if($interval->format('%Y') > 0 ) $result = intval($interval->format('%Y'));
-        return $result;
-    }
+//    protected function calculateDiffInTime($dateStart,$dateEnd){
+//        $result = 0;
+//        $dateStart = new DateTime($dateStart);
+//        $dateEnd = new DateTime($dateEnd);
+//        $interval = $dateStart->diff($dateEnd);
+//      //  echo $interval->format('%R%Y лет, %R%M месяцев, %R%D дней, %R%H часов, %R%I минут, %S секунд');
+////        if($interval->format('%S') > 0 ) $result = intval($interval->format('%S'));
+//        if($interval->format('%I') > 0 ) $result = intval($interval->format('%I'));
+////        if($interval->format('%H') > 0 ) $result = intval($interval->format('%H'));
+////        if($interval->format('%D') > 0 ) $result = intval($interval->format('%D'));
+////        if($interval->format('%M') > 0 ) $result = intval($interval->format('%M'));
+////        if($interval->format('%Y') > 0 ) $result = intval($interval->format('%Y'));
+//        return $result;
+//    }
 
 }
