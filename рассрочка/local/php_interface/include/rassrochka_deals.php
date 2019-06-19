@@ -430,7 +430,7 @@ class RassrochkaDealEvents extends CustomFunctions{
             }
 
             //self::logData('3ListElemBeforeUpdate.log',[$arFields,$oldElemDataResult,$siblingElementsResult,$allElems/*,$updateOtherElems/*,$newPaymentSum*/]);
-            self::logData('2ListElemBeforeUpdate.log',[/*$arFields,$oldElemDataResult,*/[$unPayedElemsArr,count($unPayedElemsArr),'Уже оплачено: '.$alreadyPayedSum,'Не оплачено: '.$unPayedRassrochaWholeSum,'Больший платеж: '.$biggerPayment,'РАвній платеж: '.$equalPayment],$dealSumUahArr,$newPaymentSumArr,$newPaymentSum,$allElems,$dealData]);
+           // self::logData('2ListElemBeforeUpdate.log',[/*$arFields,$oldElemDataResult,*/[$unPayedElemsArr,count($unPayedElemsArr),'Уже оплачено: '.$alreadyPayedSum,'Не оплачено: '.$unPayedRassrochaWholeSum,'Больший платеж: '.$biggerPayment,'РАвній платеж: '.$equalPayment],$dealSumUahArr,$newPaymentSumArr,$newPaymentSum,$allElems,$dealData]);
         }
 
         if($errors){

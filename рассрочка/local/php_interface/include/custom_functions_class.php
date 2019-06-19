@@ -13,7 +13,7 @@ class CustomFunctions{
     }
 
     //получение данных 1-й сделки по фильтру
-    function getOneDealData($arFilter,$arSelect){
+    protected function getOneDealData($arFilter,$arSelect){
         $db_list = CCrmDeal::GetListEx(Array("ID" => "ASC"), $arFilter, false, false, $arSelect, array()); //получение пользовательских полей сделки по ID
         if($ar_result = $db_list->GetNext()) return $ar_result;
         return false;
