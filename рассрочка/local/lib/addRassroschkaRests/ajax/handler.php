@@ -10,3 +10,7 @@ $obj = new RassrochkaRestInfo;
 
 //Запрос данных при открытии сделки для отображения/не отображения кнопки опроса
 if($_POST['ACTION'] === 'GIVE_ME_DEAL_DATA') $obj->getDealDataOnOpeningDeal($_POST['DEAL_ID']);
+
+
+//Запрос данных по элементам списка и вывод индикаторов на страницу списка
+if($_POST['ACTION'] === 'GIVE_ME_PAYMENTS_RESULT_MASSIVE') $obj->getAllPaymentsResultsData();
