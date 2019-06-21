@@ -31,7 +31,7 @@ class RassrochkaRestInfo {
             dataType: "json",
             onsuccess: function (data) {
 
-               // console.log(data);
+                console.log(data);
                 if(data.DEAL){
                     if(data.DEAL.PAYED) self.rassrochkaPayedIndicator(data.DEAL);
                     if(data.DEAL.UNPAYED) self.rassrochkaUnPayedIndicator(data.DEAL);

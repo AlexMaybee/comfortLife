@@ -45,12 +45,14 @@ class RassrochkaRestInfo{
                 $result['DEAL']['UNPAYED'] = ''; //НЕ оплаченные
                 $result['DEAL']['PAY_EXPIRED'] = ''; //НЕ оплаченные и просроченные
                 foreach ($allElemDataResult as $element){
+
+                    $sumUah = explode('|',$element['PROPERTIES']['SUMA_PLATEJU_UAH']['VALUE']);
+
                     if($element['PROPERTIES']['STATUS']['VALUE_ENUM_ID'] == 79) {
-                        $sumUah = explode('|',$element['PROPERTIES']['SUMA_PLATEJU_UAH']['VALUE']);
                         if($sumUah[1] == 'UAH') $result['DEAL']['PAYED'] += $sumUah[0];
                     }
                     else{
-                        $sumUah = explode('|',$element['PROPERTIES']['SUMA_PLATEJU_UAH']['VALUE']);
+                    //    $sumUah = explode('|',$element['PROPERTIES']['SUMA_PLATEJU_UAH']['VALUE']);
                         if($sumUah[1] == 'UAH') {
                             $result['DEAL']['UNPAYED'] += $sumUah[0];
                             if($element['PROPERTIES']['DATA_PLATEJU']['VALUE'] && (strtotime($element['PROPERTIES']['DATA_PLATEJU']['VALUE']) < strtotime('now')))

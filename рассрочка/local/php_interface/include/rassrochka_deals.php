@@ -14,12 +14,24 @@ AddEventHandler("iblock", "OnBeforeIBlockElementUpdate", Array("RassrochkaDealEv
 //Событие при обновленнии сделки - переход на конкретные стадии 2-х направлений "договора" Киев и Ирпень
 AddEventHandler("crm", "OnBeforeCrmDealUpdate", Array("RassrochkaDealEvents", "createRassrochkaListElementsForDeal"));
 
+
+
+//sms test
+//AddEventHandler("crm", "OnActivityAdd", Array("RassrochkaDealEvents", "testEventLog"));//в массиве только измененные поля
+
+
 class RassrochkaDealEvents extends CustomFunctions{
 
     const IBLOCK_31 = 31; //ID списка элементов с рассрочками
     //const ALLOVED_ON_STAGES = ['PREPARATION','C1:PREPARATION']; //Стадии, на которіх срабатівают собітия создания єл. рассрочки, !!!заменить на EXECUTING и C1:EXECUTING!!!
     const ALLOVED_ON_STAGES = ['EXECUTING','C1:EXECUTING']; //Стадии, на которіх срабатівают собітия создания єл. рассрочки, !!!заменить на EXECUTING и C1:EXECUTING!!!
     const ALLOVED_ON_CATEGORIES = ['0','1']; //Стадии, на которіх срабатівают собітия создания єл. рассрочки, !!!заменить на EXECUTING и C1:EXECUTING!!!
+
+    //test SMS LOG
+    public function testEventLog(&$arFields){
+         self::logData('EventSmsEdit.log',[$arFields]);
+    }
+
 
     public function createRassrochkaListElementsForDeal(&$arFields){
         $dealData = 0;
@@ -366,22 +378,22 @@ class RassrochkaDealEvents extends CustomFunctions{
                                                                     else{
 
                                                                         //пересчет, если сохраненная сумма платежа != новой сумме платежа
-                                                                        if($newUahSum != $oldElemDataResult[0]['PROPERTIES']['SUMA_PLATEJU_UAH']['VALUE']){
+                                                                     //   if($newUahSum != $oldElemDataResult[0]['PROPERTIES']['SUMA_PLATEJU_UAH']['VALUE']){
                                                                             if(count($unPayedElemsArr) > 0){
                                                                                 $remainder = $unPayedRassrochaWholeSum % count($unPayedElemsArr);
                                                                                 //делим платежи как я делал єто при создании єлементов!
                                                                                 if($remainder > 0){
-                                                                                    $biggerPayment = ($unPayedRassrochaWholeSum - $remainder) / count($unPayedElemsArr) + $remainder;
-                                                                                    $equalPayment = ($unPayedRassrochaWholeSum - $remainder) / count($unPayedElemsArr);
+                                                                                    $biggerPayment = (($unPayedRassrochaWholeSum - $remainder) / count($unPayedElemsArr) + $remainder).'|'.$newPaymentSumArr[1];
+                                                                                    $equalPayment = ($unPayedRassrochaWholeSum - $remainder) / count($unPayedElemsArr).'|'.$newPaymentSumArr[1];
                                                                                 }
                                                                                 //или все делим на равніе части
-                                                                                else $equalPayment = $unPayedRassrochaWholeSum / count($unPayedElemsArr);
+                                                                                else $equalPayment = ($unPayedRassrochaWholeSum / count($unPayedElemsArr)).'|'.$newPaymentSumArr[1];
                                                                             }
                                                                             else{
                                                                                 if(($alreadyPayedSum + $newPaymentSumArr[0]) < $dealSumUahArr[0]) $errors[] = 'Суми останнього платіжу '.$newPaymentSumArr[0].' грн. не достатньо для закриття розстрочки. Вона має бути '.($newPaymentSumArr[0] + ($dealSumUahArr[0] - ($alreadyPayedSum + $newPaymentSumArr[0]))).' грн.!';
                                                                                 if(($alreadyPayedSum + $newPaymentSumArr[0]) > $dealSumUahArr[0]) $errors[] = 'Сума останнього платіжу '.$newPaymentSumArr[0].' грн. перевищує залишок по розстрочці. Вона має бути '.($dealSumUahArr[0] - $alreadyPayedSum).' грн.!';
                                                                             }
-                                                                        }
+                                                                      //  }
                                                                     }
                                                                 }
                                                             }
@@ -420,7 +432,7 @@ class RassrochkaDealEvents extends CustomFunctions{
 
                                 $updElementsFields['113'] = $oneElem['PROPERTIES']['DATA_PLATEJU']['VALUE'];
 
-//                                $allElems[] = $updElementsFields;
+                                $allElems[] = $updElementsFields;
 
                                 $updateOtherElems[] = self::updatePropertiesInListElement1($oneElem['FIELDS']['ID'],self::IBLOCK_31,$updElementsFields);
                             }
@@ -430,7 +442,7 @@ class RassrochkaDealEvents extends CustomFunctions{
             }
 
             //self::logData('3ListElemBeforeUpdate.log',[$arFields,$oldElemDataResult,$siblingElementsResult,$allElems/*,$updateOtherElems/*,$newPaymentSum*/]);
-           // self::logData('2ListElemBeforeUpdate.log',[/*$arFields,$oldElemDataResult,*/[$unPayedElemsArr,count($unPayedElemsArr),'Уже оплачено: '.$alreadyPayedSum,'Не оплачено: '.$unPayedRassrochaWholeSum,'Больший платеж: '.$biggerPayment,'РАвній платеж: '.$equalPayment],$dealSumUahArr,$newPaymentSumArr,$newPaymentSum,$allElems,$dealData]);
+            //self::logData('2ListElemBeforeUpdate.log',[/*$arFields,$oldElemDataResult,*/[$unPayedElemsArr,count($unPayedElemsArr),'Уже оплачено: '.$alreadyPayedSum,'Не оплачено: '.$unPayedRassrochaWholeSum,'Больший платеж: '.$biggerPayment,'РАвній платеж: '.$equalPayment],$dealSumUahArr,$newPaymentSumArr,$newPaymentSum,$allElems,$dealData]);
         }
 
         if($errors){
