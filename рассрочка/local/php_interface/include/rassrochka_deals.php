@@ -23,7 +23,7 @@ AddEventHandler("crm", "OnBeforeCrmDealUpdate", Array("RassrochkaDealEvents", "c
 class RassrochkaDealEvents extends CustomFunctions{
 
     const IBLOCK_31 = 31; //ID списка элементов с рассрочками
-    //const ALLOVED_ON_STAGES = ['PREPARATION','C1:PREPARATION']; //Стадии, на которіх срабатівают собітия создания єл. рассрочки, !!!заменить на EXECUTING и C1:EXECUTING!!!
+    const IBLOCK_33 = 33; //ID списка элементов с курсами
     const ALLOVED_ON_STAGES = ['EXECUTING','C1:EXECUTING']; //Стадии, на которіх срабатівают собітия создания єл. рассрочки, !!!заменить на EXECUTING и C1:EXECUTING!!!
     const ALLOVED_ON_CATEGORIES = ['0','1']; //Стадии, на которіх срабатівают собітия создания єл. рассрочки, !!!заменить на EXECUTING и C1:EXECUTING!!!
 
@@ -139,7 +139,7 @@ class RassrochkaDealEvents extends CustomFunctions{
                                 'CONTACTS' => [],
                                 'CONTRACT' => '',
                                 'RASSROCHKA_SUM_UAH' => $dealData['UF_CRM_1550227712'],
-                                'RASSROCHKA_SUM_USD' => $dealData['UF_CRM_1550227726'],
+                             //   'RASSROCHKA_SUM_USD' => $dealData['UF_CRM_1550227726'],
                                 'START_DATE' => $dealData['UF_CRM_1550227879'],
                                 'ZHK_NAME' => '',
                                 'PAYMENTS_NUM' => '',
@@ -166,8 +166,8 @@ class RassrochkaDealEvents extends CustomFunctions{
 
                             //сумма рассрочки, USD
                           //  if($dealData['UF_CRM_1550227726']) $newDataMassive['RASSROCHKA_SUM_USD'] = $dealData['UF_CRM_1550227726'];
-                            if(isset($arFields['UF_CRM_1550227726']) && $arFields['UF_CRM_1550227726'])
-                                $newDataMassive['RASSROCHKA_SUM_UAH'] = $arFields['UF_CRM_1550227726'];
+//                            if(isset($arFields['UF_CRM_1550227726']) && $arFields['UF_CRM_1550227726'])
+//                                $newDataMassive['RASSROCHKA_SUM_USD'] = $arFields['UF_CRM_1550227726'];
 
                             //дата старта
                             if(isset($arFields['UF_CRM_1550227879']) && $arFields['UF_CRM_1550227879']) $newDataMassive['START_DATE'] = $arFields['UF_CRM_1550227879'];
@@ -255,6 +255,7 @@ class RassrochkaDealEvents extends CustomFunctions{
         $biggerPayment = false;
         $equalPayment = false;
         $unPayedElemsArr = []; //текущий месяц для расстановки платежей и сумм
+        $payDate = false;
 
 
         if($arFields['IBLOCK_ID'] == self::IBLOCK_31){
@@ -284,31 +285,77 @@ class RassrochkaDealEvents extends CustomFunctions{
                     //теперь сравниваем измененные поля в элементе и добавляем в $updElementsFields
 
                         //привязка к контактам/компаниям
-                        if($arFields['PROPERTY_VALUES']['107'] != $oldElemDataResult[0]['PROPERTIES']['KLIYENT']['VALUE']) $updElementsFields['107'] = $arFields['PROPERTY_VALUES']['107'];
+                       // if($arFields['PROPERTY_VALUES']['107'] != $oldElemDataResult[0]['PROPERTIES']['KLIYENT']['VALUE']) $updElementsFields['107'] = $arFields['PROPERTY_VALUES']['107'];
+                        //24.06 Запрет смены конткатов - НЕ СОГЛАСНОВАНО!
+                        if($arFields['PROPERTY_VALUES']['107'] != $oldElemDataResult[0]['PROPERTIES']['KLIYENT']['VALUE']) $errors[] = 'Не можна змінити контакт в існуючому елементі!';
 
                         //привязка к сделке
                         if($arFields['PROPERTY_VALUES']['108']){
                             $deal_id = '';
                             foreach ($arFields['PROPERTY_VALUES']['108'] as $value) $deal_id = $value['VALUE'];
-                            if($deal_id && ($deal_id != $oldElemDataResult[0]['PROPERTIES']['UGODA']['VALUE'])) $updElementsFields['108'] = $deal_id;
+                       //     if($deal_id && ($deal_id != $oldElemDataResult[0]['PROPERTIES']['UGODA']['VALUE'])) $updElementsFields['108'] = $deal_id;
+                            if($deal_id && ($deal_id != $oldElemDataResult[0]['PROPERTIES']['UGODA']['VALUE'])) $errors[] = 'Не можна змінити угоду в існуючому елементі!';
                         }
 
                         //Название ЖК
                         if($arFields['PROPERTY_VALUES']['109']){
                             $zhkName = '';
                             foreach ($arFields['PROPERTY_VALUES']['109'] as $value) $zhkName = $value['VALUE'];
-                            if($zhkName && ($zhkName != HTMLToTxt($oldElemDataResult[0]['PROPERTIES']['ZHYTLOVYY_KOMPLEKS']['VALUE']))) $updElementsFields['109'] = $zhkName;
+                            //if($zhkName && ($zhkName != HTMLToTxt($oldElemDataResult[0]['PROPERTIES']['ZHYTLOVYY_KOMPLEKS']['VALUE']))) $updElementsFields['109'] = $zhkName;
+                            if($zhkName && ($zhkName != HTMLToTxt($oldElemDataResult[0]['PROPERTIES']['ZHYTLOVYY_KOMPLEKS']['VALUE']))) $errors[] = 'Не можна змінити ЖК в існуючому елементі!';
                         }
 
-
+                        if($arFields['PROPERTY_VALUES']['113']){
+                            foreach ($arFields['PROPERTY_VALUES']['113'] as $value1){
+                                if(empty($value1['VALUE'])) $errors[] = 'Оберіть дату прийому платежу!';
+                                else $payDate = $value1['VALUE'];
+                            }
+                        }
 
                         //сравнение новой суммы и сохраненной ранее
                         if($arFields['PROPERTY_VALUES']['110'] == 79){ //Если в $arFields вібрано "Сплачено"
                             //Сравнение нового статуса с сохраненным ранее, было "Не оплачено", а смена идет на "Оплачено"
 
+                            //сохраняем курс $ на дату платежа
+                            if($payDate) {
+                                //поиск курса в списке IB = 33 по дате платежа
+                                $kursElemDataFilter = ['PROPERTY_116' =>  date('Y-m-d', strtotime($payDate)),'IBLOCK_ID' => self::IBLOCK_33];
+                                $kursElemDataSelect = ["ID","IBLOCK_ID","NAME","PROPERTY_*"];
+                                $kursElemDataResult = self::getListElementsAdnPropsByFilter($kursElemDataFilter,$kursElemDataSelect);
+                                if($kursElemDataResult){
+                                    $arFields['PROPERTY_VALUES']['115'] = $kursElemDataResult[0]['PROPERTIES']['KURS_DOLARA']['VALUE'];
+                                }
+                                else{
+                                    $url = 'https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?';
+                                    $formatType = 'json';
+                                    $queryData = http_build_query([
+                                        'date' => date('Ymd', strtotime($payDate)),
+                                        'valcode' => 'USD',
+                                    ]);
+                                    $queryData .= '&'.$formatType;
+                                    $kursUsdNbuMassive = json_decode(json_encode(self::makeGetRequest($url.$queryData)),true);
+                                    if($kursUsdNbuMassive && $kursUsdNbuMassive[0]['cc'] == 'USD'){
+
+                                        //создаем єлемент списка с датой и курса в ИБ = 33
+                                        $newKursListElemFields = [
+                                            'NAME' => 'Курс на '.$payDate,
+                                            "ACTIVE"         => "Y", // активен
+                                            "IBLOCK_ID"      => self::IBLOCK_33,
+                                            "PROPERTY_VALUES"=> [
+                                                '116' => $payDate, //дата курса
+                                                '117' => $kursUsdNbuMassive[0]['rate'], // курс долара
+                                            ],
+                                        ];
+                                        $cursElemCreateResult = self::createNewListElement($newKursListElemFields);
+                                        if($cursElemCreateResult['result'])  $arFields['PROPERTY_VALUES']['115'] = $kursUsdNbuMassive[0]['rate'];
+                                    }
+                                }
+                            }
+
+
                             //от сравнения статусов ушел - Сумма будет проверяться всегда, если статус == оплачено
                             // if($arFields['PROPERTY_VALUES']['110'] != $oldElemDataResult[0]['PROPERTIES']['STATUS']['VALUE_ENUM_ID']){
-                            $newPaymentSum = ['СТАТУСЫ_NEW' => $arFields['PROPERTY_VALUES']['110']. ' - '.$oldElemDataResult[0]['PROPERTIES']['STATUS']['VALUE_ENUM_ID']];
+                          //  $newPaymentSum = ['СТАТУСЫ_NEW' => $arFields['PROPERTY_VALUES']['110']. ' - '.$oldElemDataResult[0]['PROPERTIES']['STATUS']['VALUE_ENUM_ID']];
 
                             //сравниваем сумму сохраненную и новую
                             $newUahSum = '';
@@ -321,7 +368,7 @@ class RassrochkaDealEvents extends CustomFunctions{
                                 else{
                                     //получение данніх сделки
                                     if($arFields['PROPERTY_VALUES']['108']) {
-                                        $deal_id = '';
+                                        $deal_id = false;
                                         foreach ($arFields['PROPERTY_VALUES']['108'] as $value) $deal_id = $value['VALUE'];
                                         if (!$deal_id) $errors[] = 'Оберіть угоду!';
                                         else {
@@ -335,7 +382,7 @@ class RassrochkaDealEvents extends CustomFunctions{
                                             else{
                                                 if(!in_array($dealData['CATEGORY_ID'],self::ALLOVED_ON_CATEGORIES)) $errors[] = 'Угода не належить до напрямків, на яких дозволено розстрочку!';
                                                 else{
-                                                    if($dealData['UF_CRM_1550841222'] != 90) $errors[] = 'В угоді не полі "Тип оплати" НЕ вибрано "розстрочка"!';
+                                                    if($dealData['UF_CRM_1550841222'] != 90) $errors[] = 'В угоді у полі "Тип оплати" НЕ вибрано "розстрочка"!';
                                                     else {
                                                         //Если что, поле с USD = UF_CRM_1550227540
                                                         if(!$dealData['UF_CRM_1550227712']) $errors[] = 'В угоді не вказано суму розстрочки!';
@@ -370,10 +417,10 @@ class RassrochkaDealEvents extends CustomFunctions{
 
                                                                     //здесь проверка суммі платежей, чтобі сумма оплаченных + текущий + неоплаченный = сумме рассрочки
                                                                     if(($alreadyPayedSum + $newPaymentSumArr[0] + $unPayedRassrochaWholeSum) < $dealSumUahArr[0])
-                                                                        $errors[] = 'Суми платіжу '.$newPaymentSumArr[0].' грн. не достатньо для закриття розстрочки. Вона має бути '
+                                                                        $errors[] = 'Суми платежу '.$newPaymentSumArr[0].' грн. не достатньо для закриття розстрочки. Вона має бути '
                                                                             .($newPaymentSumArr[0] + ($dealSumUahArr[0] - ($alreadyPayedSum + $newPaymentSumArr[0]))).' грн.!';
                                                                     elseif(($alreadyPayedSum + $newPaymentSumArr[0] + $unPayedRassrochaWholeSum) > $dealSumUahArr[0])
-                                                                        $errors[] = 'Сума платіжу '.$newPaymentSumArr[0].' грн. перевищує залишок по розстрочці. Вона має бути '
+                                                                        $errors[] = 'Сума платежу '.$newPaymentSumArr[0].' грн. перевищує залишок по розстрочці. Вона має бути '
                                                                             .($dealSumUahArr[0] - $alreadyPayedSum).' грн.!';
                                                                     else{
 
@@ -390,8 +437,8 @@ class RassrochkaDealEvents extends CustomFunctions{
                                                                                 else $equalPayment = ($unPayedRassrochaWholeSum / count($unPayedElemsArr)).'|'.$newPaymentSumArr[1];
                                                                             }
                                                                             else{
-                                                                                if(($alreadyPayedSum + $newPaymentSumArr[0]) < $dealSumUahArr[0]) $errors[] = 'Суми останнього платіжу '.$newPaymentSumArr[0].' грн. не достатньо для закриття розстрочки. Вона має бути '.($newPaymentSumArr[0] + ($dealSumUahArr[0] - ($alreadyPayedSum + $newPaymentSumArr[0]))).' грн.!';
-                                                                                if(($alreadyPayedSum + $newPaymentSumArr[0]) > $dealSumUahArr[0]) $errors[] = 'Сума останнього платіжу '.$newPaymentSumArr[0].' грн. перевищує залишок по розстрочці. Вона має бути '.($dealSumUahArr[0] - $alreadyPayedSum).' грн.!';
+                                                                                if(($alreadyPayedSum + $newPaymentSumArr[0]) < $dealSumUahArr[0]) $errors[] = 'Суми останнього платежу '.$newPaymentSumArr[0].' грн. не достатньо для закриття розстрочки. Вона має бути '.($newPaymentSumArr[0] + ($dealSumUahArr[0] - ($alreadyPayedSum + $newPaymentSumArr[0]))).' грн.!';
+                                                                                //if(($alreadyPayedSum + $newPaymentSumArr[0]) > $dealSumUahArr[0]) $errors[] = 'Сума останнього платежу '.$newPaymentSumArr[0].' грн. перевищує залишок по розстрочці. Вона має бути '.($dealSumUahArr[0] - $alreadyPayedSum).' грн.!';
                                                                             }
                                                                       //  }
                                                                     }
@@ -419,18 +466,28 @@ class RassrochkaDealEvents extends CustomFunctions{
                        // $updateOtherElems = ['NONONO!!!'];
                         if(($updElementsFields || $biggerPayment || $equalPayment) && !$errors){
 
+
+                            //24.06.2019 - Добавил условие, чтобы не получать при досрочном платеже отриц. суммы в оставшихся
+                            // и присваивать им 0.00|UAH
                             foreach ($siblingElementsResult as $key => $oneElem){
                                 if($oneElem['PROPERTIES']['STATUS']['VALUE_ENUM_ID'] != 79){
                                     if($biggerPayment){
-                                        if($unPayedElemsArr[0] == $oneElem['FIELDS']['ID'])
-                                            $updElementsFields['111'] = $biggerPayment;
-                                        else $updElementsFields['111'] = $equalPayment;
+                                        if($unPayedElemsArr[0] == $oneElem['FIELDS']['ID']) {
+                                            $unPayedRassrochaWholeSum > 0 ? $updElementsFields['111'] = $biggerPayment : $updElementsFields['111'] = '0.00|'.$newPaymentSumArr[1];
+                                        }
+                                        else{
+                                          //  $updElementsFields['111'] = $equalPayment;
+                                            $unPayedRassrochaWholeSum > 0 ? $updElementsFields['111'] = $equalPayment : $updElementsFields['111'] = '0.00|'.$newPaymentSumArr[1];
+                                        }
                                     }
-                                    elseif (!$biggerPayment && $equalPayment) $updElementsFields['111'] = $equalPayment;
+                                    elseif (!$biggerPayment && $equalPayment) {
+                                        //$updElementsFields['111'] = $equalPayment;
+                                        $unPayedRassrochaWholeSum > 0 ? $updElementsFields['111'] = $equalPayment : $updElementsFields['111'] = '0.00|'.$newPaymentSumArr[1];
+                                    }
                                 }
                                 else $updElementsFields['111'] = $oneElem['PROPERTIES']['SUMA_PLATEJU_UAH']['VALUE'];
 
-                                $updElementsFields['113'] = $oneElem['PROPERTIES']['DATA_PLATEJU']['VALUE'];
+                               // $updElementsFields['113'] = $oneElem['PROPERTIES']['DATA_PLATEJU']['VALUE'];
 
                                 $allElems[] = $updElementsFields;
 
@@ -443,6 +500,8 @@ class RassrochkaDealEvents extends CustomFunctions{
 
             //self::logData('3ListElemBeforeUpdate.log',[$arFields,$oldElemDataResult,$siblingElementsResult,$allElems/*,$updateOtherElems/*,$newPaymentSum*/]);
             //self::logData('2ListElemBeforeUpdate.log',[/*$arFields,$oldElemDataResult,*/[$unPayedElemsArr,count($unPayedElemsArr),'Уже оплачено: '.$alreadyPayedSum,'Не оплачено: '.$unPayedRassrochaWholeSum,'Больший платеж: '.$biggerPayment,'РАвній платеж: '.$equalPayment],$dealSumUahArr,$newPaymentSumArr,$newPaymentSum,$allElems,$dealData]);
+           // self::logData('4ListElemBeforeUpdate.log',[[$unPayedElemsArr,count($unPayedElemsArr),'Уже оплачено: '.$alreadyPayedSum,'Не оплачено: '.$unPayedRassrochaWholeSum,'Больший платеж: '.$biggerPayment,'РАвній платеж: '.$equalPayment],$dealSumUahArr,$newPaymentSumArr,$allElems]);
+            self::logData('7ListElemBeforeUpdate.log',[$payDate,$kursElemDataResult[0]['PROPERTIES']['KURS_DOLARA']['VALUE'],$kursUsdNbuMassive]);
         }
 
         if($errors){
@@ -487,10 +546,18 @@ class RassrochkaDealEvents extends CustomFunctions{
 //                    }
 //                    else $sumUAH = $equalPayment;
 
+                    //решение проблемі с задваиванием месяцев - не везде есть 31 число, поєтому скидіваем до 28 (как в Феврале)
+                    //и берем последнее число месяца
+                    if(date('d',strtotime($massive['START_DATE'])) > 28) {
+                     //   echo 'Новая дата старта = '.date('d.m.Y', strtotime($massive['START_DATE'].'-4 day')).'<br>';
+                        $massive['START_DATE'] = date('d.m.Y', strtotime($massive['START_DATE'].'-4 day'));
+                    }
+
+
                     $newListElemFields = [
                         'NAME' => $massive['CONTRACT'].', платіж # '.$i,
                         "ACTIVE"         => "Y", // активен
-                        "IBLOCK_ID"      => 31,
+                        "IBLOCK_ID"      => self::IBLOCK_31,
                         "PROPERTY_VALUES"=> [
                             '107' => $massive['CONTACTS'],
                             '108' => $massive['DEAL_ID'],
@@ -503,6 +570,8 @@ class RassrochkaDealEvents extends CustomFunctions{
 
                    // $result[] = $newListElemFields;
                     $result[] = self::createNewListElement($newListElemFields);
+
+                    self::logData('2406CreateListElems.log',[$i,$newListElemFields,$massive]);
                 }
 
             }

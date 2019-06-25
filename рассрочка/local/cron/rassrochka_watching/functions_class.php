@@ -1,6 +1,11 @@
 <?php
+use Bitrix\Main\Web\HttpClient;
 
 
+CModule::IncludeModule("CRM");
+CModule::IncludeModule("tasks");
+CModule::IncludeModule("iblock");
+CModule::IncludeModule("bizproc");
 
 class RassrochkaWatcher{
 
@@ -9,13 +14,15 @@ class RassrochkaWatcher{
     const Rassrochka_Watchers_Group = 17;
     const DeadLine_Date = 20; //дедлайн для задачи с просрочкой - 20е число месяца
     const DeadLine_Time = '18:00:00'; //дедлайн для задачи с просрочкой, время
+    const Sms_Bp_Id = 119; //ID бизнес-процесса отправки смс
+   // public function __construct(){
+    public function watchExpiredPayments(){
+        $result = false;
 
-    public function __construct(){
-
-        //$filter = ['IBLOCK_ID' => self::IBLOCK_311, 'PROPERTY_110' => self::NOT_PAYED, '<PROPERTY_113' => date('Y-m-d')];
+        $filter = ['IBLOCK_ID' => self::IBLOCK_311, 'PROPERTY_110' => self::NOT_PAYED, '<PROPERTY_113' => date('Y-m-d')];
 
         //ЗАМЕНИТЬ ЭТОТ ФИЛЬТР НА ВЕРХНИЙ ПОСЛЕ ОКОНЧАНИЯ ИМИ РАССТАНОВКИ ПЛАТЕЖЕЙ
-        $filter = ['IBLOCK_ID' => self::IBLOCK_311, 'PROPERTY_110' => self::NOT_PAYED, 'PROPERTY_108' => 1675, '<PROPERTY_113' => date('Y-m-d')];
+       // $filter = ['IBLOCK_ID' => self::IBLOCK_311, 'PROPERTY_110' => self::NOT_PAYED, 'PROPERTY_108' => 1709, '<PROPERTY_113' => date('Y-m-d')];
 
         $select = ["ID","IBLOCK_ID","NAME","PROPERTY_*"];
         $elementResult = $this->getListElementsAndPropsByFilter($filter,$select);
@@ -31,44 +38,95 @@ class RassrochkaWatcher{
 
                 foreach ($elementResult as $element){
 
-                    //привязка к сделке + контакты + компании (если есть)
-                    $contacts = [
-                        'D_'.$element['PROPERTIES']['UGODA']['VALUE'],
-                    ];
-                    if($element['PROPERTIES']['KLIYENT']['VALUE'])
-                        foreach ($element['PROPERTIES']['KLIYENT']['VALUE'] as $client){
-                            $contacts[] = $client;
+                    //24.06.2019 Переделал, чтобы просрочки-задачи создавались только на платежи, сумма кот. > 0
+                    if($element['PROPERTIES']['SUMA_PLATEJU_UAH']['VALUE'] && strrpos($element['PROPERTIES']['SUMA_PLATEJU_UAH']['VALUE'],'|')){
+                        $paySumArr = explode('|',$element['PROPERTIES']['SUMA_PLATEJU_UAH']['VALUE']);
+                        if(intval($paySumArr[0]) > 0 && $paySumArr[1] == 'UAH'){
+
+                            //привязка к сделке + контакты + компании (если есть)
+                            $contacts = [
+                                'D_'.$element['PROPERTIES']['UGODA']['VALUE'],
+                            ];
+                            if($element['PROPERTIES']['KLIYENT']['VALUE'])
+                                foreach ($element['PROPERTIES']['KLIYENT']['VALUE'] as $client){
+                                    $contacts[] = $client;
+                                }
+
+                            $newTaskFields = [
+                                "TITLE" => 'Звязатись з клієнтом та вияснити причину прострочки платежу "'.$element['FIELDS']['NAME'].'" за угодою #'.$element['PROPERTIES']['UGODA']['VALUE'] ,
+                                "DESCRIPTION" => 'Звязатись з клієнтом та вияснити причину прострочки'
+                                    .' <a target="_blank" href="/services/lists/'.self::IBLOCK_311.'/element/0/'.$element['FIELDS']['ID'].'/">платежу "'
+                                    .$element['FIELDS']['NAME'].'"</a> по '
+                                    .'<a href="/crm/deal/details/'.$element['PROPERTIES']['UGODA']['VALUE'].'/">угоді</a>',
+                                "RESPONSIBLE_ID" => $responsible,//Ответственные
+                                "ACCOMPLICES" => $otherResponsibles,//Ответственные
+                                //      "CREATED_BY" => 1, //от имени нашего аккаунта
+                                "PRIORITY" => 2, // 2 соответствует высокому приоритету
+                                "UF_CRM_TASK" => $contacts,
+                                "DEADLINE" => $deadLine,
+                                "UF_AUTO_318646232817" => $element['FIELDS']['ID'] // Запись в него ID элемента рассрочки
+                            ];
+
+                            //Создаем задачу!
+                            $taskCreateResult = $this->createTask($newTaskFields);
+                            $result[] = $taskCreateResult;
                         }
-
-                    $newTaskFields = [
-                        "TITLE" => "Звязатись з клієнтом та вияснити причину прострочки платежу за договором ".$element['FIELDS']['NAME'],
-                        "DESCRIPTION" => 'Звязатись з клієнтом та вияснити причину прострочки платежу по '.'<a href="/crm/deal/details/'.$element['PROPERTIES']['UGODA']['VALUE'].'/">угоді</a>',
-                        "RESPONSIBLE_ID" => $responsible,//Ответственные
-                        "ACCOMPLICES" => $otherResponsibles,//Ответственные
-                  //      "CREATED_BY" => 1, //от имени нашего аккаунта
-                        "PRIORITY" => 2, // 2 соответствует высокому приоритету
-                        "UF_CRM_TASK" => $contacts,
-                        "DEADLINE" => $deadLine,
-                        "UF_AUTO_318646232817" => $element['FIELDS']['ID'] // Запись в него ID элемента рассрочки
-                    ];
-
-                    //Создаем задачу!
-                    $taskCreateResult = $this->createTask($newTaskFields);
+                    }
                 }
             }
 
            // echo '<pre>';
             //echo 'Дата окончания: '.$deadLine.'<br>';
-           // print_r($elementResult);
+         //   print_r($elementResult);
 
           //  echo 'Всего неоплачено платежей: '.count($elementResult).'<br>';
            // print_r($watchersIds);
-            //print_r($newTaskFields);
-            //print_r($taskCreateResult);
+          //  print_r($newTaskFields);
+           // print_r($result);
 
            // foreach ($watchersIds as $id) echo $id.'<br>';
+            return ['date' => date('d.m.Y H:i:s'), 'result' => $result];
         }
     }
+
+    //рассылка смс должникам
+    public function smsMailingForExpiredPayments(){
+        $result = false;
+
+        $filter = ['IBLOCK_ID' => self::IBLOCK_311, 'PROPERTY_110' => self::NOT_PAYED, '<PROPERTY_113' => date('Y-m-d')];
+
+        $select = ["ID","IBLOCK_ID","NAME","PROPERTY_*"];
+        $elementResult = $this->getListElementsAndPropsByFilter($filter,$select);
+        if($elementResult){
+           // $result = $elementResult;
+            foreach ($elementResult as $element){
+
+                //24.06.2019 СМС уходит только на платежи, сумма кот. > 0
+                if($element['PROPERTIES']['SUMA_PLATEJU_UAH']['VALUE']
+                    && strrpos($element['PROPERTIES']['SUMA_PLATEJU_UAH']['VALUE'],'|')){
+                    $paySumArr = explode('|',$element['PROPERTIES']['SUMA_PLATEJU_UAH']['VALUE']);
+                    if(intval($paySumArr[0]) > 0 && $paySumArr[1] == 'UAH') {
+                        $result[] = 'Сумма '.$paySumArr[0].' в '.$paySumArr[1];
+
+                        //получаем массив контактов (множ. поле) и отправляем смс каждому
+                        if($element['PROPERTIES']['UGODA']['VALUE']){
+                            $dealID = $element['PROPERTIES']['UGODA']['VALUE']; //self::Sms_Bp_Id;
+
+                            //візов БП из сделки
+                            $result['BP'][] = CBPDocument::StartWorkflow(self::Sms_Bp_Id,["crm","CCrmDocumentDeal","DEAL_".intval($dealID)],[],$arErrors);
+                        }
+
+
+
+                    }
+                }
+            }
+        }
+
+
+        return ['date' => date('d.m.Y H:i:s'), 'result' => $result];
+    }
+
 
     //получение списка элементов по фильтру - свойства - каждое отдельным массивом
     private function getListElementsAndPropsByFilter($arFilter,$arSelect){
@@ -118,4 +176,22 @@ class RassrochkaWatcher{
         return $result;
     }
 
+    public function logging($fileName,$data){
+        $file = $_SERVER['DOCUMENT_ROOT'].'/local/cron/rassrochka_watching/'.$fileName;
+        file_put_contents($file, print_r($data, true), FILE_APPEND | LOCK_EX);
+    }
+
+
+    //убрать, здесь он не нужен!!!
+    public function makeGetRequest($url,$queryData){
+        return json_decode(file_get_contents($url.$queryData));
+
+    }
+
+    public function makeGetRequestTest($urlAndParams){
+        $httpClient = new HttpClient();
+        $httpClient->setHeader('Content-Type', 'application/json', true);
+        $result = $httpClient->get($urlAndParams);
+        return json_decode($result);
+    }
 }

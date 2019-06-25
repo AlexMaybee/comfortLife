@@ -108,6 +108,11 @@ class RassrochkaRestInfo{
                             //засовываем все платежи в массив с ключом == id сделки
                          //   $result['ELEMS_BY_DEAL_ID_MASSIVE'][$element['PROPERTIES']['UGODA']['VALUE']]['PAYED_SUM'] += $paymentSum[0];
                             $elemsByIdMassive[$element['PROPERTIES']['UGODA']['VALUE']]['PAYED_SUM'] += $paymentSum[0];
+
+                            //Если захотят увидеть сумму без старт. платежей (закомментить тогда стр 124 - 138
+                          //  $result['RESULT']['PAYED_WITH_START_PAY'] += $paymentSum[0];
+
+
                             $elemsByIdMassive[$element['PROPERTIES']['UGODA']['VALUE']]['DEAL_ID'] = $element['PROPERTIES']['UGODA']['VALUE'];
                          //   $result['ELEMS_BY_DEAL_ID_MASSIVE'][$element['PROPERTIES']['UGODA']['VALUE']]['DEAL_ID'] = $element['PROPERTIES']['UGODA']['VALUE'];
 
@@ -131,10 +136,7 @@ class RassrochkaRestInfo{
                     }
                 }
             }
-
-
         }
-
 
         $this->sentAnswer($result);
     }
