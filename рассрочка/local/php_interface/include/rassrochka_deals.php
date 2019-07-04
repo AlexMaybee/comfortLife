@@ -1,9 +1,5 @@
 <?
 
-//отлавливаем кастом сессию с id расписания
-//AddEventHandler("crm", "OnAfterCrmDealAdd", Array("RassrochkaDealEvents", "RassrochkaElemsAddAfterDealCreate"));
-//AddEventHandler("crm", "OnBeforeCrmDealAdd", Array("RassrochkaDealEvents", "RassrochkaElemsAddBeforeDealCreate"));
-
 //логирование перед соданием элемента списка
 AddEventHandler("iblock", "OnBeforeIBlockElementAdd", Array("RassrochkaDealEvents", "beforeIBlockElementAddFunction"));
 
@@ -190,13 +186,23 @@ class RassrochkaDealEvents extends CustomFunctions{
 
 
                             //запуск создания єл-в расрочки !!!только если кол-во платежей > 0
-                            if($newDataMassive['PAYMENTS_NUM'] > 0) $rassrochkaElemsCreateResult = self::createRassrochkaElements($newDataMassive);
+                            if($newDataMassive['PAYMENTS_NUM'] > 0) {
+                                $rassrochkaElemsCreateResult = self::createRassrochkaElements($newDataMassive);
+                                if($rassrochkaElemsCreateResult) {
+
+                                    //вывод ошибок при создании нов. элементов списков
+                                    foreach ($rassrochkaElemsCreateResult as $res){
+                                        if(!$res['result']) $errors[] = $res['error'];
+                                    }
+
+                                }
+                            }
                         }
                     }
                 }
             }
 
-//            self::logData('BeforeDealUpdate.log',[$arFields,$dealData,$errors,$newDataMassive,$rassrochkaElemsCreateResult]);
+            //self::logData('BeforeDealUpdate.log',[$newDataMassive,$rassrochkaElemsCreateResult,$errors]);
         }
 
         //чисто для теста
@@ -215,39 +221,6 @@ class RassrochkaDealEvents extends CustomFunctions{
 
     }
 
-
-
-    public function RassrochkaElemsAddAfterDealCreate(&$arFields){
-        self::logData('LogAfterDealCreate.log',$arFields);
-    }
-
-    public function RassrochkaElemsAddBeforeDealCreate(&$arFields){
-        $errors = [];
-        if(in_array($arFields['STAGE_ID'],self::ALLOVED_ON_STAGES)){ //стадию заменить на EXECUTING и C1:EXECUTING
-            if($arFields['UF_CRM_1550841222'] == 90){
-                if(empty($arFields['UF_CRM_1550227609'])) $errors[] = 'НЕ УКАЗАН ПЕРВЫЙ ВЗНОС!';
-                if(empty($arFields['UF_CRM_1550227814'])) $errors[] = 'НЕ УКАЗАНО КОЛ-ВО ОПЛАЧЕННЫХ КЛИЕНТОМ МЕТРОВ !';
-            }
-
-        }
-
-
-        self::logData('LogBeforeDealCreate.log',$arFields);
-
-
-        if($errors){
-            $err = '';
-            foreach ($errors as $error){
-                $err .= $error."\n";
-            }
-            $arFields['RESULT_MESSAGE'] = $err;
-            return false;
-        }
-        else return true;
-
-    }
-
-
     //26.06 пересчет при создании элемента со статусом "сплачено"
     public function beforeIBlockElementAddFunction(&$arFields){
         $errors = [];
@@ -261,6 +234,9 @@ class RassrochkaDealEvents extends CustomFunctions{
         $payDate = false;
         $deal_id = false;
         $dealData = [];
+
+       // self::logData('Errors.log',[$arFields]);
+
 
         if($arFields['IBLOCK_ID'] == self::IBLOCK_31){
 
@@ -292,7 +268,7 @@ class RassrochkaDealEvents extends CustomFunctions{
 
             //поле "Сума платежу, USD" - не должно біть пустім
             if(!$arFields['PROPERTY_VALUES']['122']){
-                $errors[] = 'Заповніть суму у полі "Сума платежу, USD"!';
+              //  $errors[] = 'Заповніть суму у полі "Сума платежу, USD"!';
             }
             else{
                 foreach ($arFields['PROPERTY_VALUES']['122'] as $value){
@@ -334,8 +310,10 @@ class RassrochkaDealEvents extends CustomFunctions{
                                 //если сумма платежа < суммы рассрочки, то  выдаем ошибку
                                 $rassrochkaSumArr = explode('|',$dealData['UF_CRM_1550227712']);
 
-                                if($sumUahArr[0] && ($sumUahArr[0] < $rassrochkaSumArr[0]))
+                                /*if($sumUahArr[0] && ($sumUahArr[0] < $rassrochkaSumArr[0])){
                                     $errors[] = 'Сума єдиного платежу ('.$sumUahArr[0].' грн.) не може бути менше суми розтрочки ('.$rassrochkaSumArr[0].' грн.) !';
+                                }*/
+
                             }
                         }
 
@@ -358,10 +336,13 @@ class RassrochkaDealEvents extends CustomFunctions{
                 $errors[] = 'Оберіть значення у полі "Статус"!';
             }
             else{
-                if($payDate){
-                    if(strtotime('today') < strtotime($payDate))
-                        $errors[] = 'Вказана дата у полі "Дата платежу" ще не настала!';
-                }
+
+                //выдает ошибку при гупповом создании элементов при смене стадии сделки
+                /*if($payDate){
+                    if(strtotime('today') < strtotime($payDate)){
+                        $errors[] = 'Вказана дата '.$payDate.' у полі "Дата платежу" ще не настала!';
+                    }
+                }*/
             }
 
 
@@ -463,8 +444,6 @@ class RassrochkaDealEvents extends CustomFunctions{
           //  self::logData('2608ListElemBeforeCreate.log',[$sumUahArr,$rassrochkaSumArr,$dealData]);
 
         }
-
-
     }
 
 
@@ -783,18 +762,45 @@ class RassrochkaDealEvents extends CustomFunctions{
                         "IBLOCK_ID"      => self::IBLOCK_31,
                         "PROPERTY_VALUES"=> [
                             '107' => $massive['CONTACTS'],
-                            '108' => $massive['DEAL_ID'],
-                            '109' => $massive['ZHK_NAME'],
+                            '108' =>
+                                [
+                                    'n0' =>
+                                    [
+                                        'VALUE' => $massive['DEAL_ID']
+                                    ]
+                                ],
+                            '109' =>
+                                [
+                                    'n0' =>
+                                        [
+                                            'VALUE' => $massive['ZHK_NAME']
+                                        ]
+                                ],
                             '110' => 80, //Статус 80 - "Не оплачено" // 79 - Оплачено
-                            '111' => ($remainder > 0 && $i == 1) ? $biggerPayment.'|'.$wholePaymentUAH[1] : $equalPayment.'|'.$wholePaymentUAH[1],//'5000|UAH',
-                            '113' => date('t.m.Y', strtotime($massive['START_DATE'].'+'.($i-1).' months')),//последний день выбранного месяца + платежи на n-месяцев
+                            '111' =>
+                                [
+                                    'n0' =>
+                                        [
+                                            'VALUE' => ($remainder > 0 && $i == 1) ? $biggerPayment.'|'.$wholePaymentUAH[1] : $equalPayment.'|'.$wholePaymentUAH[1],//'5000|UAH',
+                                        ]
+                                ],
+
+
+                            '113' =>
+                                ['
+                                    n0' =>
+                                    [
+                                        'VALUE' => date('t.m.Y', strtotime($massive['START_DATE'].'+'.($i-1).' months')),//последний день выбранного месяца + платежи на n-месяцев
+                                    ]
+                                ],
+
                         ],
                     ];
 
                    // $result[] = $newListElemFields;
                     $result[] = self::createNewListElement($newListElemFields);
 
-                    self::logData('2406CreateListElems.log',[$i,$newListElemFields,$massive]);
+                 //   self::logData('2406CreateListElems.log',[$i,$newListElemFields,$massive]);
                 }
 
             }
