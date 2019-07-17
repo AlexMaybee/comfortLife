@@ -1,6 +1,6 @@
 <?
 
-//логирование перед соданием элемента списка
+//содание элемента списка
 AddEventHandler("iblock", "OnBeforeIBlockElementAdd", Array("RassrochkaDealEvents", "beforeIBlockElementAddFunction"));
 
 //изменение элемента списка
@@ -22,6 +22,7 @@ class RassrochkaDealEvents extends CustomFunctions{
     const IBLOCK_33 = 33; //ID списка элементов с курсами
     const ALLOVED_ON_STAGES = ['EXECUTING','C1:EXECUTING']; //Стадии, на которіх срабатівают собітия создания єл. рассрочки, !!!заменить на EXECUTING и C1:EXECUTING!!!
     const ALLOVED_ON_CATEGORIES = ['0','1']; //Стадии, на которіх срабатівают собітия создания єл. рассрочки, !!!заменить на EXECUTING и C1:EXECUTING!!!
+    const KURS_DIFFERENCE = 1.06; //результат деления курса НБУ на курс из договора, при єто значении уже применяется перерасчет
 
     //test SMS LOG
     public function testEventLog(&$arFields){
@@ -289,7 +290,8 @@ class RassrochkaDealEvents extends CustomFunctions{
                         'UF_CRM_1550227712', 'UF_CRM_1550227726', //сумма рассрочки грн + у.е.
                         'UF_CRM_1550227879', 'UF_CRM_1550227956', //дата начала рассрочки + кол-во месяцев/платежей
                         'UF_CRM_1550227830', //курс НБУ
-                        'UF_CRM_1550227609','UF_CRM_1550227631' //первые взносы грн. и usd
+                        'UF_CRM_1550227609','UF_CRM_1550227631', //первые взносы грн. и usdl
+                        'UF_CRM_1550227830', //курс доллара в сделке
                     ];
                     $dealData = self::getOneDealData($dealDataFilter, $dealDataSelect);
                     if($dealData){
@@ -363,8 +365,10 @@ class RassrochkaDealEvents extends CustomFunctions{
                     //запрет создания єлемента с будущей датой
                     if($payDate){
                         $kursUsdRes = self::getKursFromListOrSite($payDate);
-                        if ($kursUsdRes) $arFields['PROPERTY_VALUES']['115'] = $kursUsdRes;
+                        if ($kursUsdRes)
+                            $arFields['PROPERTY_VALUES']['115'] = $kursUsdRes;
                     }
+
 
                     if($dealData){
                         //запрос всех єлементов рассрочки по сделке
@@ -373,6 +377,27 @@ class RassrochkaDealEvents extends CustomFunctions{
                         if($siblingElementsResult){
 
                             if($sumUahArr){
+
+                                //17.07.2019 Пересчет суммы грн. по курсу НБУ на вібранній день в отдельное поле USD
+                                if($kursUsdRes){
+                                    $arFields['PROPERTY_VALUES']['122'] = round($sumUahArr[0] / $kursUsdRes,2);
+
+                                    // - Делим курс нбу на курс нбу в сделке, если сумма >= 1.06, тогда отмечаем пересчет в 2х полях!
+                                    if($dealData['UF_CRM_1550227830'] && $kursUsdRes){
+                                        if(($kursUsdRes / $dealData['UF_CRM_1550227830']) >= self::KURS_DIFFERENCE){
+                                            $arFields['PROPERTY_VALUES']['124'] = 6642; //Да
+                                            $arFields['PROPERTY_VALUES']['125'] =
+                                                'Різниця поточного курсу НБУ ('.$kursUsdRes.') та на момент оформлення договору ('
+                                                .$dealData['UF_CRM_1550227830'].') дорівнює '.(($kursUsdRes / $dealData['UF_CRM_1550227830'] - 1) * 100).' %';
+                                        }
+                                        else{
+                                            $arFields['PROPERTY_VALUES']['124'] = 6643; //Нет
+                                            $arFields['PROPERTY_VALUES']['125'] = '';
+                                        }
+                                    }
+
+                                }
+
                                 $rassrochkaSumArr = explode('|',$dealData['UF_CRM_1550227712']);
 
                                 $payedWholeSum = $sumUahArr[0];
@@ -453,6 +478,7 @@ class RassrochkaDealEvents extends CustomFunctions{
         $equalPayment = false;
         $unPayedElemsArr = []; //текущий месяц для расстановки платежей и сумм
         $payDate = false;
+        $kursUsdRes = 0; //курс доллара НБУ на конкретную дату
 
 
         if($arFields['IBLOCK_ID'] == self::IBLOCK_31){
@@ -519,41 +545,6 @@ class RassrochkaDealEvents extends CustomFunctions{
                                 if ($kursUsdRes) $arFields['PROPERTY_VALUES']['115'] = $kursUsdRes;
                             }
 
-                          /*  if($payDate) {
-                                //поиск курса в списке IB = 33 по дате платежа
-                                $kursElemDataFilter = ['PROPERTY_116' =>  date('Y-m-d', strtotime($payDate)),'IBLOCK_ID' => self::IBLOCK_33];
-                                $kursElemDataSelect = ["ID","IBLOCK_ID","NAME","PROPERTY_*"];
-                                $kursElemDataResult = self::getListElementsAdnPropsByFilter($kursElemDataFilter,$kursElemDataSelect);
-                                if($kursElemDataResult){
-                                    $arFields['PROPERTY_VALUES']['115'] = $kursElemDataResult[0]['PROPERTIES']['KURS_DOLARA']['VALUE'];
-                                }
-                                else{
-                                    $url = 'https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?';
-                                    $formatType = 'json';
-                                    $queryData = http_build_query([
-                                        'date' => date('Ymd', strtotime($payDate)),
-                                        'valcode' => 'USD',
-                                    ]);
-                                    $queryData .= '&'.$formatType;
-                                    $kursUsdNbuMassive = json_decode(json_encode(self::makeGetRequest($url.$queryData)),true);
-                                    if($kursUsdNbuMassive && $kursUsdNbuMassive[0]['cc'] == 'USD'){
-
-                                        //создаем єлемент списка с датой и курса в ИБ = 33
-                                        $newKursListElemFields = [
-                                            'NAME' => 'Курс на '.$payDate,
-                                            "ACTIVE"         => "Y", // активен
-                                            "IBLOCK_ID"      => self::IBLOCK_33,
-                                            "PROPERTY_VALUES"=> [
-                                                '116' => $payDate, //дата курса
-                                                '117' => $kursUsdNbuMassive[0]['rate'], // курс долара
-                                            ],
-                                        ];
-                                        $cursElemCreateResult = self::createNewListElement($newKursListElemFields);
-                                        if($cursElemCreateResult['result'])  $arFields['PROPERTY_VALUES']['115'] = $kursUsdNbuMassive[0]['rate'];
-                                    }
-                                }
-                            }*/
-
 
                             //от сравнения статусов ушел - Сумма будет проверяться всегда, если статус == оплачено
                             // if($arFields['PROPERTY_VALUES']['110'] != $oldElemDataResult[0]['PROPERTIES']['STATUS']['VALUE_ENUM_ID']){
@@ -568,6 +559,12 @@ class RassrochkaDealEvents extends CustomFunctions{
                                 if($newPaymentSumArr[1] != 'UAH') $errors[] = 'Сума платежу у грн. має бути з валютою UAH! ';
                                 elseif (!$newPaymentSumArr[0]) $errors[] = 'Не вказано суму платежу або вона дорівнює 0!';
                                 else{
+
+                                    //17.07.2019 Пересчет суммы грн. по курсу НБУ на вібранній день в отдельное поле USD
+                                    if($kursUsdRes){
+                                        $arFields['PROPERTY_VALUES']['122'] = round($newPaymentSumArr[0] / $kursUsdRes,2);
+                                    }
+
                                     //получение данніх сделки
                                     if($arFields['PROPERTY_VALUES']['108']) {
                                         $deal_id = false;
@@ -578,10 +575,28 @@ class RassrochkaDealEvents extends CustomFunctions{
                                             $dealDataSelect = ['ID', 'CATEGORY_ID', 'STAGE_ID', 'UF_CRM_1550841222', //рассрочка
                                                 'UF_CRM_1550227712', 'UF_CRM_1550227726', //сумма рассрочки грн + у.е.
                                                 'UF_CRM_1550227879', 'UF_CRM_1550227956', //дата начала рассрочки + кол-во месяцев/платежей
+                                                'UF_CRM_1550227830', //курс НБУ в сделке
                                             ];
                                             $dealData = self::getOneDealData($dealDataFilter, $dealDataSelect);
                                             if(!$dealData) $errors[] = 'Не знайдено угоду за ID = '.$deal_id.' з поля '.$oldElemDataResult[0]['PROPERTIES']['UGODA']['NAME'];
                                             else{
+
+                                                //17.07.2019, этап 2 -
+                                                // - Делим курс нбу на курс нбу в сделке, если сумма >= 1.06, тогда отмечаем пересчет в 2х полях!
+                                                if($dealData['UF_CRM_1550227830'] && $kursUsdRes){
+                                                    if(($kursUsdRes / $dealData['UF_CRM_1550227830']) >= self::KURS_DIFFERENCE){
+                                                        $arFields['PROPERTY_VALUES']['124'] = 6642; //Да
+                                                        $arFields['PROPERTY_VALUES']['125'] =
+                                                            'Різниця поточного курсу НБУ ('.$kursUsdRes.') та на момент оформлення договору ('
+                                                            .$dealData['UF_CRM_1550227830'].') дорівнює '.(($kursUsdRes / $dealData['UF_CRM_1550227830'] - 1) * 100).' %';
+                                                    }
+                                                    else{
+                                                        $arFields['PROPERTY_VALUES']['124'] = 6643; //Нет
+                                                        $arFields['PROPERTY_VALUES']['125'] = '';
+                                                    }
+                                                }
+
+
                                                 if(!in_array($dealData['CATEGORY_ID'],self::ALLOVED_ON_CATEGORIES)) $errors[] = 'Угода не належить до напрямків, на яких дозволено розстрочку!';
                                                 else{
                                                     if($dealData['UF_CRM_1550841222'] != 90) $errors[] = 'В угоді у полі "Тип оплати" НЕ вибрано "розстрочка"!';
@@ -704,6 +719,7 @@ class RassrochkaDealEvents extends CustomFunctions{
             //self::logData('2ListElemBeforeUpdate.log',[/*$arFields,$oldElemDataResult,*/[$unPayedElemsArr,count($unPayedElemsArr),'Уже оплачено: '.$alreadyPayedSum,'Не оплачено: '.$unPayedRassrochaWholeSum,'Больший платеж: '.$biggerPayment,'РАвній платеж: '.$equalPayment],$dealSumUahArr,$newPaymentSumArr,$newPaymentSum,$allElems,$dealData]);
            // self::logData('4ListElemBeforeUpdate.log',[[$unPayedElemsArr,count($unPayedElemsArr),'Уже оплачено: '.$alreadyPayedSum,'Не оплачено: '.$unPayedRassrochaWholeSum,'Больший платеж: '.$biggerPayment,'РАвній платеж: '.$equalPayment],$dealSumUahArr,$newPaymentSumArr,$allElems]);
            // self::logData('7ListElemBeforeUpdate.log',[$payDate,$kursElemDataResult[0]['PROPERTIES']['KURS_DOLARA']['VALUE'],$kursUsdNbuMassive]);
+          //  self::logData('8BeforeUpdate.log',[$payDate,$kursUsdRes]);
         }
 
         if($errors){
@@ -794,6 +810,7 @@ class RassrochkaDealEvents extends CustomFunctions{
                                     ]
                                 ],
 
+                            '124' => 6643, //Пересчет 6643 - "Нет" // 6642 - Да
                         ],
                     ];
 
@@ -810,7 +827,7 @@ class RassrochkaDealEvents extends CustomFunctions{
     }
 
     private function getKursFromListOrSite($payDate){
-        $result = false;
+        $result = false; //курс доллара
 
         //поиск курса в списке IB = 33 по дате платежа
         $kursElemDataFilter = ['PROPERTY_116' =>  date('Y-m-d', strtotime($payDate)),'IBLOCK_ID' => self::IBLOCK_33];
