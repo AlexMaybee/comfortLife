@@ -99,4 +99,13 @@ class CustomFunctions{
         return json_decode($result);
     }
 
+    //Deal Update
+    //обновление новой сделки
+    protected function updateDeal($dealID,$fields){
+        $entity = new CCrmDeal(true);//true - проверять права на доступ
+        $result = $entity->update($dealID,$fields);
+        ($result) ? $res['result'] = $result : $res['error'] = $entity->LAST_ERROR;
+        return $res;
+    }
+
 }
