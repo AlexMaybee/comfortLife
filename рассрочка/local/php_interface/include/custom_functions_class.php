@@ -96,7 +96,8 @@ class CustomFunctions{
         $httpClient = new HttpClient();
         $httpClient->setHeader('Content-Type', 'application/json', true);
         $result = $httpClient->get($urlAndParams);
-        return json_decode($result);
+        //return json_decode($result);
+        return json_decode(json_encode(json_decode($result)),true);
     }
 
     //Deal Update

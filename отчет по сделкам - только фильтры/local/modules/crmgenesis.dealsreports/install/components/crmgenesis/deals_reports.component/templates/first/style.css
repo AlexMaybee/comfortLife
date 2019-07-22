@@ -1,0 +1,36 @@
+.test{
+    color: red;
+    font-size: larger;
+}
+
+.module-container{
+   /* min-width: 100%;*/
+    min-height: 100px;
+    padding: 20px;
+    background-color: #ddf2fd;
+}
+
+.report-title{
+    text-align: center;
+    font-size: 1.5em;
+}
+.date-span{
+    color: #0b66c3;
+}
+
+.filters table{
+    margin-bottom: 20px;
+}
+.filters table td{
+    padding: 5px;
+}
+
+.filters input, .filters select{
+    padding: 5px;
+    box-sizing: border-box;
+    min-height: 40px;
+    vertical-align: middle;
+}
+.filters input[type="date"], .filters input[type="number"], .filters select{
+    min-width: 200px;
+}
