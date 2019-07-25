@@ -4,15 +4,12 @@ use \Bitrix\Main;
 use \Bitrix\Main\Loader;
 use Bitrix\Main\UserTable;
 
-$APPLICATION->SetTitle("Страница отчетов по сделкам");
+$APPLICATION->SetTitle("Звіт по угодах");
 CJSCore::Init();
+?>
 
-
-echo "<h1 class='test1'>Отчеты по сделкам</h1><br>";
-
-
-echo '<br><br><hr><br>';
-
+<section class="module-container">
+<?
 $APPLICATION->IncludeComponent(
     "crmgenesis:deals_reports.component",
     "first",
@@ -20,3 +17,5 @@ $APPLICATION->IncludeComponent(
     ),
     false
 );
+?>
+</section>

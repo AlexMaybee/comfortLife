@@ -1,7 +1,7 @@
 <?
 $aMenuLinks = Array(
     Array(
-        "DashBoard",
+        "Звіти по угодах",
         "/custom_deals_reports/",
         Array(),
         Array(),

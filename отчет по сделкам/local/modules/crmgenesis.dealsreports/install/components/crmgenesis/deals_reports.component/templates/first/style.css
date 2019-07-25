@@ -4,10 +4,12 @@
 }
 
 .module-container{
-   /* min-width: 100%;*/
-    min-height: 100px;
+   /* min-width: 100%;
+    min-height: 100px;*/
     padding: 20px;
     background-color: #ddf2fd;
+    overflow-x: auto;
+
 }
 
 .report-title{
@@ -25,12 +27,82 @@
     padding: 5px;
 }
 
-.filters input, .filters select{
+.filters input, .filters select, .shoot{
     padding: 5px;
     box-sizing: border-box;
-    height: 40px;
+    min-height: 40px;
     vertical-align: middle;
 }
-.filters input[type="date"], .filters select{
+.filters input[type="date"], .filters input[type="number"], .filters select, .shoot{
     min-width: 200px;
 }
+
+.shoot{
+    color: #fff;
+    border-radius: 2px;
+    float: right;
+    font-size: larger;
+}
+.ready {
+    background-color: #2da31d;
+    border-color: #2da31d;
+    animation: all 2s;
+}
+.unready {
+    background-color: darkred;
+    border: darkred;
+    animation: all 2s;
+}
+
+/*Выделение при наведении не срабатывает на самой последней строке "Всего"*/
+.custom-table{
+    width: 100%;
+    border-collapse: collapse;
+    /*border: 1px solid red;*/
+}
+.custom-table tbody tr:nth-child(odd):not(:last-child){
+    background-color: #ebefb9;
+}
+
+.custom-table tbody tr:last-child{
+    background-color: #0f82c5;
+    color: #fff;
+}
+.custom-table tbody tr:not(:last-child):hover{
+  /*  background-color: yellow;
+    color: #0e3f82;*/
+    background-color: #efaaaa;
+    color: #fff;
+}
+
+.custom-table th, .custom-table td{
+    text-align: center;
+    vertical-align: middle;
+    border: 1px solid #000;
+    padding: 5px 10px;
+}
+.custom-table .table-deal-name{
+    text-align: left;
+    padding-left: 20px;
+}
+.currentStage{
+    background-color: #0e3f82;
+    color: #fff;
+}
+.whole-statistics{
+    background-color: #191970;
+    color: #fff;
+}
+
+.custom-table ul{
+    list-style-type: none;
+    padding-left: 10px;
+    text-align: left;
+}
+
+.presents-list{
+    min-width: 130px;
+}
+
+/*Анимация когда-нить позже!*/
+

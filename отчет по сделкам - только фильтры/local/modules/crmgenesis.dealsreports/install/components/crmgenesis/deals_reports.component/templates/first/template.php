@@ -102,6 +102,7 @@ $APPLICATION->AddHeadScript('/local/components/crmgenesis/deals_reports.componen
                     </td>
                 </tr>
 
+
                 <template v-if="filters.payType == 90">
                     <tr>
                         <td>
@@ -123,20 +124,6 @@ $APPLICATION->AddHeadScript('/local/components/crmgenesis/deals_reports.componen
                     </tr>
                     <tr>
                         <td>
-                            <label for="square_price_from">Вартість м<sup>2</sup>, від:</label>
-                        </td>
-                        <td>
-                            <input type="number" name="square_price_from" v-model="filters.squarePriceFrom" id="square_price_from">
-                        </td>
-                        <td>
-                            <label for="square_price_to">Вартість м<sup>2</sup>, по:</label>
-                        </td>
-                        <td>
-                            <input type="number" name="square_price_to" v-model="filters.squarePriceTo" id="square_price_to">
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
                             <label for="redeem_percent_from">Перший внесок від, %:</label>
                         </td>
                         <td>
@@ -150,6 +137,21 @@ $APPLICATION->AddHeadScript('/local/components/crmgenesis/deals_reports.componen
                         </td>
                     </tr>
                 </template>
+
+                <tr>
+                    <td>
+                        <label for="square_price_from">Вартість м<sup>2</sup>, від:</label>
+                    </td>
+                    <td>
+                        <input type="number" name="square_price_from" v-model="filters.squarePriceFrom" id="square_price_from">
+                    </td>
+                    <td>
+                        <label for="square_price_to">Вартість м<sup>2</sup>, по:</label>
+                    </td>
+                    <td>
+                        <input type="number" name="square_price_to" v-model="filters.squarePriceTo" id="square_price_to">
+                    </td>
+                </tr>
 
             </table>
 
