@@ -60,15 +60,15 @@
     border-collapse: collapse;
     /*border: 1px solid red;*/
 }
-.custom-table tbody tr:nth-child(odd):not(:last-child){
+/*.custom-table tbody tr:nth-child(odd){
     background-color: #ebefb9;
-}
+}*/
 
-.custom-table tbody tr:last-child{
+.custom-table tfoot tr{
     background-color: #0f82c5;
     color: #fff;
 }
-.custom-table tbody tr:not(:last-child):hover{
+.custom-table tbody tr:not(.sub-row-show):hover{
   /*  background-color: yellow;
     color: #0e3f82;*/
     background-color: #efaaaa;
@@ -103,6 +103,37 @@
 .presents-list{
     min-width: 130px;
 }
+
+.zhk-name{
+    min-width: 200px;
+    font-weight: bold;
+}
+
+.number-list{
+    min-width: 50px;
+}
+
+.sub-row-hide{
+    display: none;
+}
+.sub-row-show{
+    display: table-row;
+}
+.custom-table tbody .sub-row-show:hover{
+    background-color: #fff;
+}
+/*.sub-row-show td:nth-child(-n+2){
+    padding-left: 20px!important;
+}*/
+
+.sub-row-show:nth-child(odd){
+    background-color: #ebefb9;
+}
+.sub-row-show:nth-child(even){
+    background-color: #dcd4f1;
+}
+
+
 
 /*Анимация когда-нить позже!*/
 

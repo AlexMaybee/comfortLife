@@ -164,16 +164,21 @@ $APPLICATION->AddHeadScript('/local/components/crmgenesis/deals_reports.componen
 
             <table class="custom-table">
                 <thead>
-                <th v-for="header in list.headersList">{{header.NAME}}</th>
+                <th v-for="header in list.headersList"
+                    :class="[
+                    header.FIELD_NAME == 'NOMER_PO_PORYANKU' ? 'number-list' : '',
+                    header.FIELD_NAME == 'TYPE_ID' ? 'zhk-name' : '',
+                    header.FIELD_NAME == 'UF_CRM_1554977040' ? 'presents-list' : ''
+                    ]">{{header.NAME}}</th>
 
 
                 </thead>
-                <tbody>
-                <tr v-for="zhk,index in list.resultList">
+                <tbody v-for="zhk,index in list.resultList">
+                <tr @click="toggleDeals(zhk.ZHK_ID)" :title="'Клікніть, щоб показати або сховати угоди у ЖК' + zhk.ZHK_NAME">
                     <td>{{index + 1}}</td>
                     <td>{{zhk.ZHK_NAME}}</td>
                     <td>{{zhk.PAY_TYPE}}</td>
-                    <td class="presents-list">
+                    <td>
                         <ul>
                             <li v-for="present in zhk.PRESENTS">{{present.NAME + ' - ' + present.QUANTITY + ';'}}</li>
                         </ul>
@@ -193,30 +198,56 @@ $APPLICATION->AddHeadScript('/local/components/crmgenesis/deals_reports.componen
                     <td>{{zhk.CONTRACT_SUM_UAH}}</td>
                     <td>{{zhk.CONTRACT_SUM_USD}}</td>
                 </tr>
-                <tr>
-                    <td colspan="3">Загалом ЖК Знайдено: {{list.wholeRow.ZHK_NUMBERS}}</td>
-                    <template >
-                        <td></td>
-                        <td v-if="list.wholeRow.WHOLE_AVARGE_1M_SQU_FIRST_PAYMENT_UAH">{{list.wholeRow.WHOLE_AVARGE_1M_SQU_FIRST_PAYMENT_UAH}}</td>
-                        <td v-if="list.wholeRow.WHOLE_AVARGE_1M_SQU_FIRST_PAYMENT_USD">{{list.wholeRow.WHOLE_AVARGE_1M_SQU_FIRST_PAYMENT_USD}}</td>
+                <tr v-for="deal,i in zhk.DEALS_MASSIVE" class="sub-row-hide" :class="'row-' + zhk.ZHK_ID">
+                    <td>{{index + 1 + '.' + (i + 1)}}</td>
+                    <td>{{deal.TITLE}}</td>
+                    <td>{{deal.PAY_TYPE}}</td>
+                    <td>
+                        <ul>
+                            <li v-for="present in deal.PRESENTS">{{present.NAME + ','}}</li>
+                        </ul>
+                    </td>
 
-                        <td v-if="list.wholeRow.WHOLE_AVARGE_1M_SQU_REST_UAH">{{list.wholeRow.WHOLE_AVARGE_1M_SQU_REST_UAH}}</td>
-                        <td v-if="list.wholeRow.WHOLE_AVARGE_1M_SQU_REST_USD">{{list.wholeRow.WHOLE_AVARGE_1M_SQU_REST_USD}}</td>
+                    <td v-if="deal.M_SQU_FIRST_PAYMENT_UAH">{{deal.M_SQU_FIRST_PAYMENT_UAH}}</td>
+                    <td v-if="deal.M_SQU_FIRST_PAYMENT_USD">{{deal.M_SQU_FIRST_PAYMENT_USD}}</td>
+                    <td v-if="deal.M_SQU_REST_UAH">{{deal.M_SQU_REST_UAH}}</td>
+                    <td v-if="deal.M_SQU_REST_USD">{{deal.M_SQU_REST_USD}}</td>
 
+                    <td>{{deal.M_SQU_UAH}}</td>
+                    <td>{{deal.M_SQU_USD}}</td>
+                    <td>{{deal.SQU_M}}</td>
 
-                        <td>{{list.wholeRow.WHOLE_AVARGE_1M_SQU_UAH}}</td>
-                        <td>{{list.wholeRow.WHOLE_AVARGE_1M_SQU_USD}}</td>
-                        <td>{{list.wholeRow.WHOLE_WHOLE_SQU_M}}</td>
+                    <td v-if="deal.SQU_M_REDEEMED">{{deal.SQU_M_REDEEMED}}</td>
 
-                        <td v-if="list.wholeRow.WHOLE_WHOLE_SQU_M_REDEEMED">{{list.wholeRow.WHOLE_WHOLE_SQU_M_REDEEMED}}</td>
-
-                        <td>{{list.wholeRow.WHOLE_CONTRACT_SUM_UAH}}</td>
-                        <td>{{list.wholeRow.WHOLE_CONTRACT_SUM_USD}}</td>
-                    </template>
-
-
+                    <td>{{deal.CONTRACT_SUM_UAH}}</td>
+                    <td>{{deal.CONTRACT_SUM_USD}}</td>
                 </tr>
                 </tbody>
+                <tfoot>
+                    <tr>
+                       <!-- <td colspan="3">Загалом ЖК Знайдено: {{list.wholeRow.ZHK_NUMBERS}}</td>-->
+                        <td colspan="3">Загалом ЖК Знайдено: {{list.resultList.length}}</td>
+                        <template >
+                            <td></td>
+                            <td v-if="list.wholeRow.WHOLE_AVARGE_1M_SQU_FIRST_PAYMENT_UAH">{{list.wholeRow.WHOLE_AVARGE_1M_SQU_FIRST_PAYMENT_UAH}}</td>
+                            <td v-if="list.wholeRow.WHOLE_AVARGE_1M_SQU_FIRST_PAYMENT_USD">{{list.wholeRow.WHOLE_AVARGE_1M_SQU_FIRST_PAYMENT_USD}}</td>
+
+                            <td v-if="list.wholeRow.WHOLE_AVARGE_1M_SQU_REST_UAH">{{list.wholeRow.WHOLE_AVARGE_1M_SQU_REST_UAH}}</td>
+                            <td v-if="list.wholeRow.WHOLE_AVARGE_1M_SQU_REST_USD">{{list.wholeRow.WHOLE_AVARGE_1M_SQU_REST_USD}}</td>
+
+
+                            <td>{{list.wholeRow.WHOLE_AVARGE_1M_SQU_UAH}}</td>
+                            <td>{{list.wholeRow.WHOLE_AVARGE_1M_SQU_USD}}</td>
+                            <td>{{list.wholeRow.WHOLE_WHOLE_SQU_M}}</td>
+
+                            <td v-if="list.wholeRow.WHOLE_WHOLE_SQU_M_REDEEMED">{{list.wholeRow.WHOLE_WHOLE_SQU_M_REDEEMED}}</td>
+
+                            <td>{{list.wholeRow.WHOLE_CONTRACT_SUM_UAH}}</td>
+                            <td>{{list.wholeRow.WHOLE_CONTRACT_SUM_USD}}</td>
+                        </template>
+                    </tr>
+                <tfoot>
+
             </table>
 
         </div>

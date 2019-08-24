@@ -183,7 +183,7 @@ let tab = new Vue({
                 dataType: "json",
                 onsuccess: function (response) {
                     console.log(response)
-                    if(response.result){
+                    if(response.result != false){
                         self.list.resultList = response.result.TD_FIELDS;
                         self.list.headersList = response.result.TH_FIELDS;
                         self.list.wholeRow = response.result.WHOLE_ROW;
@@ -208,9 +208,22 @@ let tab = new Vue({
                 this.filters.installmentNumberFrom = '';
                 this.filters.installmentNumberTo = '';
             }
-
-
-        }
+        },
+        /*24.08.2019 - скріваем/отображаем строки*/
+        toggleDeals: function (zhk_id) {
+            let elements = document.querySelectorAll('.row-'+zhk_id);
+            for (let elem of elements) {
+                if(elem.classList.contains('sub-row-hide')){
+                    elem.classList.remove('sub-row-hide');
+                    elem.classList.add('sub-row-show');
+                }
+                else{
+                    elem.classList.remove('sub-row-show');
+                    elem.classList.add('sub-row-hide');
+                }
+               // console.log(elem,elem.style.display);
+            }
+        },
     },
     computed: {
 
