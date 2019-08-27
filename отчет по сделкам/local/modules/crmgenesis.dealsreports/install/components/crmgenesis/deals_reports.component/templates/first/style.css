@@ -27,22 +27,30 @@
     padding: 5px;
 }
 
-.filters input, .filters select, .shoot{
+.filters input, .filters select, .shoot, .shoot-excell{
     padding: 5px;
     box-sizing: border-box;
     min-height: 40px;
     vertical-align: middle;
 }
-.filters input[type="date"], .filters input[type="number"], .filters select, .shoot{
+.filters input[type="date"], .filters input[type="number"], .filters select, .shoot, .shoot-excell{
     min-width: 200px;
 }
-
 .shoot{
     color: #fff;
+}
+.shoot-excell{
+    color: #fff;
+    background-color: darkred;
+    border: 1px solid darkred;
+}
+.shoot, .shoot-excell{
     border-radius: 2px;
     float: right;
     font-size: larger;
 }
+
+
 .ready {
     background-color: #2da31d;
     border-color: #2da31d;
@@ -64,9 +72,10 @@
     background-color: #ebefb9;
 }*/
 
-.custom-table tfoot tr{
+.custom-table thead tr, .custom-table tfoot tr{
     background-color: #0f82c5;
     color: #fff;
+    font-weight: bolder;
 }
 .custom-table tbody tr:not(.sub-row-show):hover{
   /*  background-color: yellow;

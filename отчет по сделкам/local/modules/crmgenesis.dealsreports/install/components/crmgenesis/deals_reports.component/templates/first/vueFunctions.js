@@ -64,10 +64,8 @@ let tab = new Vue({
                         //стадии по направлениям
                         self.getStagesList(self.filters.category);
 
-
                     }
                     else self.list.error = response.error;
-
                 }
             });
         },
@@ -85,7 +83,6 @@ let tab = new Vue({
                //       console.log(response)
                     if(response.result){
                         self.list.stages = response.result;
-                        // self.filters.currentStageId = [self.list.stages[0].ID]; //присваиваем значение selected при загрузке, чтобы можно было сразу запустить загрузку таблицы
                     }
                     else self.list.error = response.error;
                 }
@@ -104,7 +101,6 @@ let tab = new Vue({
                    // console.log(response)
                     if(response.result){
                         self.list.dealTypes = response.result;
-                        // self.filters.dealType = [self.list.dealTypes[0].ID]; //присваиваем значение selected при загрузке, чтобы можно было сразу запустить загрузку таблицы
                     }
                     else self.list.error = response.error;
                 }
@@ -143,7 +139,6 @@ let tab = new Vue({
                   //  console.log(response)
                     if(response.result){
                         self.list.presents = response.result;
-                        // self.filters.presents = [self.list.presents[0].ID]; //присваиваем значение selected при загрузке, чтобы можно было сразу запустить загрузку таблицы
                     }
                     else self.list.error = response.error;
                 }
@@ -162,8 +157,6 @@ let tab = new Vue({
                    // console.log(response)
                     if(response.result){
                         self.list.paymentNumbers = response.result;
-                        // self.filters.presents = [self.list.paymentNumbers[0].ID]; //присваиваем значение selected при загрузке, чтобы можно было сразу запустить загрузку таблицы
-
                     }
                     else self.list.error = response.error;
                 }
@@ -174,7 +167,7 @@ let tab = new Vue({
         },
         getInfo: function () {
             this.filters.ACTION = 'GIVE_ME_INFO_BY_ZHK';
-            console.log(this.filters);
+        //    console.log(this.filters);
             let self = this;
             BX.ajax({
                 method: "POST",
@@ -182,8 +175,8 @@ let tab = new Vue({
                 data: this.filters,
                 dataType: "json",
                 onsuccess: function (response) {
-                    console.log(response)
-                    if(response.result != false){
+                 //   console.log('mainResp',response)
+                    if(response != null){
                         self.list.resultList = response.result.TD_FIELDS;
                         self.list.headersList = response.result.TH_FIELDS;
                         self.list.wholeRow = response.result.WHOLE_ROW;
@@ -197,7 +190,7 @@ let tab = new Vue({
                         self.list.resultList = [];
                         self.list.headersList = [];
                         self.list.wholeRow = [];
-                 }
+                    }
                 }
             });
         },
@@ -223,6 +216,20 @@ let tab = new Vue({
                 }
                // console.log(elem,elem.style.display);
             }
+        },
+        /*26.08.2019 Excell export*/
+        createExcell: function(){
+           // console.log('starting create excell', this.list, this.filters);
+
+            //удаление Экшна псле получчения данных в таблице
+            delete this.filters.ACTION;
+
+            //по фильтрам снова получаем теми же методами те же данніе на отдельную страницу
+            let param = jQuery.param(this.filters);
+            //console.log('test',param)
+
+            window.open("/local/components/crmgenesis/deals_reports.component/b24_excell.php?" + param, "_blank");
+
         },
     },
     computed: {

@@ -46,8 +46,8 @@ if($_POST['ACTION'] == 'GIVE_ME_INFO_BY_ZHK'){
     $obj->getInfoByZhk($_POST);
 }
 
-//24.08.2019 Запрос сделок по нажатию на + в ЖК
-if($_POST['ACTION'] == 'GIVE_ME_DEALS_BY_THIS_CURRENT_ZHK'){
+//24.08.2019 Создание excell-файла по нажатию кнопки
+/*if($_POST['ACTION'] == 'CREATE_EXCELL_FILE'){
     $obj = new CustomDealsReports;
-    $obj->getDealsByCurrentZhk($_POST);
-}
+    $obj->createExcellFile($_POST);
+}*/

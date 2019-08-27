@@ -118,7 +118,11 @@ class CustomDealsReports extends CBitrixComponent{
 
     //получение данных по фильтрам
     public function getInfoByZhk($post){
-        $result = ['result' => false, 'error' => false];
+        $result = ['result' => [
+            'TH_FIELDS' => [],
+            'TD_FIELDS' => [],
+            'WHOLE_ROW' => [],
+        ], 'error' => false];
 
         //массив сделок по фильтру (направление, дата с, дата по)
         $deals_filter = [
@@ -217,7 +221,7 @@ class CustomDealsReports extends CBitrixComponent{
 
         if(!$dealMassive) $result['error'] = 'Знайдено 0 угод!';
         else{
-            $result['deals_massive'] = $dealMassive;
+          //  $result['deals_massive'] = $dealMassive;
 
             $result['result'] = [];
 
@@ -345,10 +349,10 @@ class CustomDealsReports extends CBitrixComponent{
 
         }
 
-
-
-
-        $this->sentAnswer($result);
+        //если экшн есть (запрос данных из таблицы), то возвр. для аякса, иначе делаем return
+        if(array_key_exists('ACTION',$post))
+            $this->sentAnswer($result);
+        else return $result;
     }
 
 
@@ -671,8 +675,6 @@ class CustomDealsReports extends CBitrixComponent{
                     }
 
 
-
-
                     if($avarge1mSquUah[1] == 'UAH') {
                         $customDeals[$dealFields['ID']]['M_SQU_UAH'] = $avarge1mSquUah[0];
                         $data[$zhkId]['AVARGE_1M_SQU_UAH_ARR'][] = $avarge1mSquUah[0];
@@ -684,19 +686,16 @@ class CustomDealsReports extends CBitrixComponent{
                     }
 
 
-
                     if($dealFields['UF_CRM_1550227093']) {
                         $customDeals[$dealFields['ID']]['SQU_M'] = $dealFields['UF_CRM_1550227093'];
                         $data[$zhkId]['WHOLE_SQU_M'] += $dealFields['UF_CRM_1550227093'];
                     }
 
 
-
                     if($dealFields['UF_CRM_1550227695']) {
                         $customDeals[$dealFields['ID']]['SQU_M_REDEEMED'] = $dealFields['UF_CRM_1550227695'];
                         $data[$zhkId]['WHOLE_SQU_M_REDEEMED'] += $dealFields['UF_CRM_1550227695'];
                     }
-
 
 
                     if($contractSumUah[1] == 'UAH') {
@@ -760,7 +759,6 @@ class CustomDealsReports extends CBitrixComponent{
                 $data[$zhkId]['AVARGE_1M_SQU_REST_UAH'] = round(array_sum($zhkFields['AVARGE_1M_SQU_REST_UAH_ARR']) / count($zhkFields['AVARGE_1M_SQU_REST_UAH_ARR']),2);
                 $data[$zhkId]['AVARGE_1M_SQU_REST_USD'] = round(array_sum($zhkFields['AVARGE_1M_SQU_REST_USD_ARR']) / count($zhkFields['AVARGE_1M_SQU_REST_USD_ARR']),2);
 
-
                 $data[$zhkId]['AVARGE_1M_SQU_UAH'] = round(array_sum($zhkFields['AVARGE_1M_SQU_UAH_ARR']) / count($zhkFields['AVARGE_1M_SQU_UAH_ARR']),2);
                 $data[$zhkId]['AVARGE_1M_SQU_USD'] = round(array_sum($zhkFields['AVARGE_1M_SQU_USD_ARR']) / count($zhkFields['AVARGE_1M_SQU_USD_ARR']),2);
                 $data[$zhkId]['WHOLE_SQU_M'] = round($data[$zhkId]['WHOLE_SQU_M'],2);
@@ -770,29 +768,22 @@ class CustomDealsReports extends CBitrixComponent{
                 $data[$zhkId]['CONTRACT_SUM_UAH'] = round($data[$zhkId]['CONTRACT_SUM_UAH'],2);
                 $data[$zhkId]['CONTRACT_SUM_USD'] = round($data[$zhkId]['CONTRACT_SUM_USD'],2);
 
-
                 $wholeValues['WHOLE_AVARGE_1M_SQU_FIRST_PAYMENT_UAH_ARR'][] = $data[$zhkId]['AVARGE_1M_SQU_FIRST_PAYMENT_UAH'];
                 $wholeValues['WHOLE_AVARGE_1M_SQU_FIRST_PAYMENT_USD_ARR'][] = $data[$zhkId]['AVARGE_1M_SQU_FIRST_PAYMENT_USD'];
 
                 $wholeValues['WHOLE_AVARGE_1M_SQU_REST_UAH_ARR'][] = $data[$zhkId]['AVARGE_1M_SQU_REST_UAH'];
                 $wholeValues['WHOLE_AVARGE_1M_SQU_REST_USD_ARR'][] = $data[$zhkId]['AVARGE_1M_SQU_REST_USD'];
 
-
                 $wholeValues['WHOLE_AVARGE_1M_SQU_UAH_ARR'][] = $data[$zhkId]['AVARGE_1M_SQU_UAH'];
                 $wholeValues['WHOLE_AVARGE_1M_SQU_USD_ARR'][] = $data[$zhkId]['AVARGE_1M_SQU_USD'];
 
-
                 $wholeValues['WHOLE_WHOLE_SQU_M'] += round($data[$zhkId]['WHOLE_SQU_M'],2);
-
 
                 $wholeValues['WHOLE_WHOLE_SQU_M_REDEEMED'] += round($data[$zhkId]['WHOLE_SQU_M_REDEEMED'],2);
 
-
                 $wholeValues['WHOLE_CONTRACT_SUM_UAH'] += $data[$zhkId]['CONTRACT_SUM_UAH'];
                 $wholeValues['WHOLE_CONTRACT_SUM_USD'] += $data[$zhkId]['CONTRACT_SUM_USD'];
-
             }
-
 
             $wholeValues['WHOLE_AVARGE_1M_SQU_FIRST_PAYMENT_UAH'] = round(array_sum($wholeValues['WHOLE_AVARGE_1M_SQU_FIRST_PAYMENT_UAH_ARR']) / count($wholeValues['WHOLE_AVARGE_1M_SQU_FIRST_PAYMENT_UAH_ARR']),2);
             $wholeValues['WHOLE_AVARGE_1M_SQU_FIRST_PAYMENT_USD'] = round(array_sum($wholeValues['WHOLE_AVARGE_1M_SQU_FIRST_PAYMENT_USD_ARR']) / count($wholeValues['WHOLE_AVARGE_1M_SQU_FIRST_PAYMENT_USD_ARR']),2);
@@ -817,92 +808,7 @@ class CustomDealsReports extends CBitrixComponent{
             ];
 
         }
-
-
         return $result;
-    }
-
-    //24.08.2019 Получение сделко по конкретному ЖК, те же поля, только отобр. по каждой сделке
-    public function getDealsByCurrentZhk($post){
-        $result = ['result' => false, 'error' => false];
-
-        //массив сделок по фильтру (направление, дата с, дата по)
-        $deals_filter = [
-            'CATEGORY_ID' => $post['category'],
-            ">=BEGINDATE" => date('d.m.Y', strtotime($post['dateFrom'])), //date('m.Y',strtotime('-1 month'))
-            "<=BEGINDATE" => date('d.m.Y', strtotime($post['dateTo'])), //date('m.Y',strtotime('-1 month'))
-        ];
-
-        //Тип оплаты
-        if($post['payType']) $deals_filter['UF_CRM_1550841222'] = $post['payType'];
-
-        //Если выбрана галка "Учитывать закрытые сделки", добавляем в фильтр
-        if($post['onlyOpenedDeals'] == 'true') $deals_filter['CLOSED'] = 'N'; //ВОЗВРАЩАЕТ TRUE/FALSE в ВИДЕ СТРОКИ
-
-        //Стадии
-        if($post['currentStageId']) $deals_filter['STAGE_ID'] = $post['currentStageId'];
-
-        //Тип угоди (ЖК) - Вставляем ИД конкретного ЖК
-        if($post['dealType']) $deals_filter['TYPE_ID'] = $post['currentZHKid'];
-
-        //Подарунки
-        if($post['presents']) $deals_filter['UF_CRM_1554977040'] = $post['presents'];
-
-        //Вартість кв.м.
-        //Від
-        if(!empty($post['squarePriceFrom'])){
-            //Рассрочка - ищем по полю "Вартість 1 кв. м. (залишок) ГРН."
-            if($post['payType'] == self::IS_RASSROCHKA_TYPE)
-                $deals_filter['>=UF_CRM_1550227752'] = $post['squarePriceFrom'];
-            //Остальніе случаи - Вартість 1 кв. м. ГРН. (середня)
-            else $deals_filter['>=UF_CRM_1550500088309'] = $post['squarePriceFrom'];
-        }
-        //По
-        if(!empty($post['squarePriceTo'])){
-            //Рассрочка - ищем по полю "Вартість 1 кв. м. (залишок) ГРН."
-            if($post['payType'] == self::IS_RASSROCHKA_TYPE)
-                $deals_filter['<=UF_CRM_1550227752'] = $post['squarePriceTo'];
-            //Остальніе случаи - Вартість 1 кв. м. ГРН. (середня)
-            else $deals_filter['<=UF_CRM_1550500088309'] = $post['squarePriceTo'];
-        }
-
-        //Перший внесок %
-        //Від
-        if(!empty($post['percentRedeemedFrom'])){
-            //Рассрочка - ищем по полю "Перший внесок %"
-            if($post['payType'] == self::IS_RASSROCHKA_TYPE)
-                $deals_filter['>=UF_CRM_1550227684'] = $post['percentRedeemedFrom'];
-        }
-        //По
-        if(!empty($post['percentRedeemedTo'])){
-            //Рассрочка - ищем по полю "Вартість 1 кв. м. (залишок) ГРН."
-            if($post['payType'] == self::IS_RASSROCHKA_TYPE)
-                $deals_filter['<=UF_CRM_1550227684'] = $post['percentRedeemedTo'];
-        }
-
-
-        $deals_select = ['ID','TITLE','CATEGORY_ID','STAGE_ID','DATE_CREATE','CLOSEDATE','CLOSED',
-            'UF_CRM_1550841222', //тип оплаті
-            'TYPE_ID', //тип сделки (ЖК)
-            'UF_CRM_1554977040', //Подарунки
-            'UF_CRM_1550500088309', //Вартість 1 кв. м. ГРН. (середня)
-            'UF_CRM_1550500214026', //Вартість 1 кв. м. $ (середня)
-            'UF_CRM_1550227093', //Загальна площа кв. м.
-            'UF_CRM_1550227867', //Сума договору ГРН.
-            'UF_CRM_1550227540', //Сума договора $
-            'UF_CRM_1550227956', //Розстрочка, місяців
-
-            //для рассрочки
-            'UF_CRM_1550227575', //Вартість 1 кв. м. ГРН. (перший внесок)
-            'UF_CRM_1550227592', //Вартість 1 кв. м. $. (перший внесок)
-            'UF_CRM_1550227752', //Вартість 1 кв. м. (залишок) ГРН.
-            'UF_CRM_1550563272125', //Вартість 1 кв. м. (залишок) $.
-            'UF_CRM_1550227695', //Викуплено кв. метрів
-        ];
-        $dealMassive = $this->getDealDataByFilter($deals_filter,$deals_select,$post['installmentNumberFrom'],$post['installmentNumberTo']);
-        $result['result'] = $dealMassive;
-
-        $this->sentAnswer($result);
     }
 
 

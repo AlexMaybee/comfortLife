@@ -3,6 +3,8 @@
 $APPLICATION->AddHeadScript('/local/components/crmgenesis/deals_reports.component/templates/first/vue.js');
 
 
+CJSCore::Init(array("jquery"))
+
 ?>
 
 <div id="reports">
@@ -155,11 +157,16 @@ $APPLICATION->AddHeadScript('/local/components/crmgenesis/deals_reports.componen
                     <td>
                         <input type="number" name="square_price_to" v-model="filters.squarePriceTo" id="square_price_to">
                     </td>
-                    <td colspan="2">
+                </tr>
+                <tr>
+                    <td>
                         <button class="shoot" :class="list.resultList ? 'ready' : 'unready'" @click="getInfo()">Запуск</button>
                     </td>
-                </tr>
 
+                    <td>
+                        <button class="shoot-excell" v-if="list.resultList.length > 0" @click="createExcell()">Создать excell</button>
+                    </td>
+                </tr>
             </table>
 
             <table class="custom-table">
