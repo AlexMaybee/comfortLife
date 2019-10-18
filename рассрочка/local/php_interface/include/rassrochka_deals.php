@@ -585,8 +585,8 @@ class RassrochkaDealEvents extends CustomFunctions{
 
                             //сохраняем курс $ на дату платежа
                             if($payDate){ //ПРОВЕРИТЬ РАБОТУ ПРИ ИЗМЕНЕНИИ!!!
-                                $kursUsdRes = self::getKursFromListOrSite($payDate);
-                                if ($kursUsdRes) $arFields['PROPERTY_VALUES']['115'] = $kursUsdRes;
+                                $curElemData['KURS_NBU_CURRENT'] = self::getKursFromListOrSite($payDate);
+                                if ($curElemData['KURS_NBU_CURRENT']) $arFields['PROPERTY_VALUES']['115'] = $curElemData['KURS_NBU_CURRENT'];
                             }
 
 
@@ -605,8 +605,8 @@ class RassrochkaDealEvents extends CustomFunctions{
                                 else{
 
                                     //17.07.2019 Пересчет суммы грн. по курсу НБУ на вібранній день в отдельное поле USD
-                                    if($kursUsdRes){
-                                        $arFields['PROPERTY_VALUES']['122'] = round($newPaymentSumArr[0] / $kursUsdRes,2);
+                                    if($curElemData['KURS_NBU_CURRENT']){
+                                        $arFields['PROPERTY_VALUES']['122'] = round($newPaymentSumArr[0] / $curElemData['KURS_NBU_CURRENT'],2);
                                     }
 
                                     //получение данніх сделки, если єлемент != доплата к рассрочке
@@ -627,90 +627,20 @@ class RassrochkaDealEvents extends CustomFunctions{
 
                                                 //17.07.2019, этап 2 -
                                                 // - Делим курс нбу на курс нбу в сделке, если сумма >= 1.06, тогда отмечаем пересчет в 2х полях!
-                                                if($dealData['UF_CRM_1550227830'] && $kursUsdRes){
+                                                if($dealData['UF_CRM_1550227830'] && $curElemData['KURS_NBU_CURRENT']){
 
-                                                    $kursDivideRes = ($kursUsdRes / $dealData['UF_CRM_1550227830']);
-                                                    if($kursDivideRes >= self::KURS_DIFFERENCE){
+                                                    $curElemData['KURS_NBU_ON_OLD_DIVIDED'] = ($curElemData['KURS_NBU_CURRENT'] / $dealData['UF_CRM_1550227830']);
+                                                    if($curElemData['KURS_NBU_ON_OLD_DIVIDED'] >= self::KURS_DIFFERENCE){
                                                         $arFields['PROPERTY_VALUES']['124'] = 6642; //Да
                                                         $arFields['PROPERTY_VALUES']['125'] =
-                                                            'Різниця поточного курсу НБУ ('.$kursUsdRes.') та на момент оформлення договору ('
-                                                            .$dealData['UF_CRM_1550227830'].') дорівнює '.(($kursDivideRes - 1) * 100).' %';
+                                                            'Різниця поточного курсу НБУ ('.$curElemData['KURS_NBU_CURRENT'].') та на момент оформлення договору ('
+                                                            .$dealData['UF_CRM_1550227830'].') дорівнює '.(($curElemData['KURS_NBU_ON_OLD_DIVIDED'] - 1) * 100).' %';
 
                                                         //Создание нового єлемента
 
                                                         //переделать на
-                                                        // $newOverPayElemRes = self::createOverPayElemAndUpdateDealField($curElemData,$dealData['UF_CRM_1550227830'],$newPaymentSumArr);
+                                                         $newOverPayElemRes = self::createOverPayElemAndUpdateDealField($curElemData,$dealData['UF_CRM_1550227830'],$newPaymentSumArr);
 
-                                                        $newListElemFields = [
-                                                            'NAME' => $arFields['NAME'].', доплата через різницю в курсах '.(($kursDivideRes - 1) * 100).'%',
-                                                            "ACTIVE"         => "Y", // активен
-                                                            "IBLOCK_ID"      => self::IBLOCK_31,
-                                                            "PROPERTY_VALUES"=> [
-                                                                '107' => $curElemData['CLIENTS'],
-                                                                '108' =>
-                                                                    [
-                                                                        'n0' =>
-                                                                            [
-                                                                                'VALUE' => $curElemData['DEAL_ID']
-                                                                            ]
-                                                                    ],
-                                                                '109' =>
-                                                                    [
-                                                                        'n0' =>
-                                                                            [
-                                                                                'VALUE' => $curElemData['ZHK_NAME']
-                                                                            ]
-                                                                    ],
-                                                                '110' => 80, //Статус 80 - "Не оплачено" // 79 - Оплачено
-                                                                '111' =>
-                                                                    [
-                                                                        'n0' =>
-                                                                            [
-                                                                                'VALUE' => round($newPaymentSumArr[0] * ($kursDivideRes - 1),2) .'|'. $newPaymentSumArr[1],//текущий платеж * разницу в курсах в %
-                                                                            ]
-                                                                    ],
-                                                                '113' =>
-                                                                    [
-                                                                        'n0' =>
-                                                                        [
-                                                                            'VALUE' => date('t.m.Y', strtotime($curElemData['LAST_RASSROCHKA_ELEM_BY_PAYMENT']['PROPERTIES']['DATA_PLATEJU']['VALUE'].'+1 months')),//последний платеж по рассрочке (согл. графику) + 1 месяц
-                                                                        ]
-                                                                    ],
-                                                                '124' => 6643, //Пересчет 6643 - "Нет" // 6642 - Да
-                                                                '125' =>
-                                                                    'Це є доплата по платежу "'.$arFields['NAME'].'" через різницю у курсах НБУ поточному ('.$kursUsdRes.') та на момент оформлення договору ('
-                                                                    .$dealData['UF_CRM_1550227830'].'), що дорівнює '.(($kursDivideRes - 1) * 100).' %',
-                                                                '126' => self::NOT_ALLOW_TO_RECALCULATE_PAYMENT, //Разрешение пересчитывать 81 - "Да" // 82 - Нет
-                                                            ],
-                                                        ];
-
-                                                        $additionalPayElemCreate = self::createNewListElement($newListElemFields);
-                                                        //если успешно создан єлемент с доплатой, то добавляем сумму доплаті к сумме сделки
-                                                        if($additionalPayElemCreate['result']){
-                                                            //тогда получаем все єлементі доплат по сделке и вписіваем в поле сделки
-                                                            $overPayElemsFilter = [
-                                                                'IBLOCK_ID' => self::IBLOCK_31,
-                                                                'PROPERTY_108' => $curElemData['DEAL_ID'], ///PROPERY_108 - ID сделки
-                                                                'PROPERTY_126' => self::NOT_ALLOW_TO_RECALCULATE_PAYMENT, //Пересчет 6643 - "Нет" // 6642 - Да
-                                                            ];
-                                                            $overPayElemsSelect = ['ID','NAME','IBLOCK_ID','PROPERTY_*',"TIMESTAMP_X"];
-                                                            $overPayElemsSelect = self::getListElementsAdnPropsByFilter($overPayElemsFilter,$overPayElemsSelect);
-                                                            if($overPayElemsSelect){
-                                                                $updDealFields['UF_CRM_1563531749867'] = '';
-                                                                foreach ($overPayElemsSelect as $overPayElem){
-                                                                    if($overPayElem['PROPERTIES']['SUMA_PLATEJU_UAH']['VALUE'])
-                                                                        $updDealFields['UF_CRM_1563531749867'] +=
-                                                                            explode('|',$overPayElem['PROPERTIES']['SUMA_PLATEJU_UAH']['VALUE'])[0];
-                                                                }
-
-                                                                //обновление сделки
-                                                                if($updDealFields['UF_CRM_1563531749867'])
-                                                                    $updDealFields['UF_CRM_1563531749867'] .= '|UAH';
-                                                                    $updDealRes = self::updateDeal($curElemData['DEAL_ID'],$updDealFields);
-                                                            }
-
-
-                                                        }
                                                     }
                                                     else{
                                                         $arFields['PROPERTY_VALUES']['124'] = 6643; //Нет
@@ -922,7 +852,7 @@ class RassrochkaDealEvents extends CustomFunctions{
                                 [
                                     'n0' =>
                                         [
-                                            'VALUE' => ($remainder > 0 && $i == 1) ? $biggerPayment.'|'.$wholePaymentUAH[1] : $equalPayment.'|'.$wholePaymentUAH[1],//'5000|UAH',
+                                            'VALUE' => ($remainder > 0 && $i == 1) ? round($biggerPayment,2).'|'.$wholePaymentUAH[1] : round($equalPayment,2).'|'.$wholePaymentUAH[1],//'5000|UAH',
                                         ]
                                 ],
                             '113' =>
@@ -940,7 +870,7 @@ class RassrochkaDealEvents extends CustomFunctions{
                    // $result[] = $newListElemFields;
                     $result[] = self::createNewListElement($newListElemFields);
 
-                 //   self::logData('2406CreateListElems.log',[$i,$newListElemFields,$massive]);
+//                    self::logData('CreateListElems.log',[$i,$newListElemFields,$massive]);
                 }
 
             }
@@ -961,19 +891,18 @@ class RassrochkaDealEvents extends CustomFunctions{
             $result = $kursElemDataResult[0]['PROPERTIES']['KURS_DOLARA']['VALUE'];
         }
         else{
-            $url = 'https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?';
-            $formatType = 'json';
-            $queryData = http_build_query([
+
+            $reqParams = [
                 'date' => date('Ymd', strtotime($payDate)),
                 'valcode' => 'USD',
-            ]);
-            $queryData .= '&'.$formatType;
-            $kursUsdNbuMassive = json_decode(json_encode(self::makeGetRequest($url.$queryData)),true);
+            ];
+            $kursUsdNbuMassive = self::getKourseLoop($reqParams);
+
             if($kursUsdNbuMassive && $kursUsdNbuMassive[0]['cc'] == 'USD'){
 
                 //создаем єлемент списка с датой и курса в ИБ = 33
                 $newKursListElemFields = [
-                    'NAME' => 'Курс на '.$payDate,
+                    'NAME' => 'Курс на '.$kursUsdNbuMassive[0]['exchangedate'],
                     "ACTIVE"         => "Y", // активен
                     "IBLOCK_ID"      => self::IBLOCK_33,
                     "PROPERTY_VALUES"=> [
@@ -987,6 +916,8 @@ class RassrochkaDealEvents extends CustomFunctions{
                     //$arFields['PROPERTY_VALUES']['115'] = $kursUsdNbuMassive[0]['rate'];
             }
         }
+
+     //   self::logData('KursTest.log',$kursUsdNbuMassive);
         return $result;
     }
 
